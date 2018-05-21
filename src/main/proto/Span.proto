@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package com.thapovan.orion.proto;
+
+import "Trace.proto";
+import "Events.proto";
+
+message Span {
+    Trace trace_context = 1;
+    string span_id = 2;
+    oneof event {
+        StartEvent start_event = 3;
+        EndEvent end_event = 4;
+        LogEvent log_event = 5;
+    }
+    uint64 timestamp  = 6;
+    string service_name = 7;
+    string event_location = 8;
+    string parent_span_id = 9;
+}

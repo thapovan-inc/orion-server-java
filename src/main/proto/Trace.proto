@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package com.thapovan.orion.proto;
+
+message Trace {
+    string trace_id = 1;
+}

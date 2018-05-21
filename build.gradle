@@ -1,0 +1,114 @@
+buildscript {
+    ext.kotlin_version = '1.2.41'
+
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.5'
+    }
+}
+
+plugins {
+    id 'application'
+    id 'org.jetbrains.kotlin.jvm' version "1.2.41"
+    id 'com.google.protobuf' version '0.8.5'
+}
+
+group 'com.thapovan.orion'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'idea'
+
+sourceCompatibility = 1.8
+final grpc_version = '1.12.0'
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.5.1-1"
+    }
+    plugins {
+        grpc {
+            artifact = "io.grpc:protoc-gen-grpc-java:$grpc_version"
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {}
+        }
+    }
+}
+
+repositories.ext.confluentRepo = {
+    repositories.maven {
+        url "https://packages.confluent.io/maven/"
+    }
+}
+
+repositories {
+    jcenter()
+    confluentRepo()
+    mavenCentral()
+}
+
+dependencies {
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    compile "org.jetbrains.kotlin:kotlin-reflect"
+
+    compile "io.grpc:grpc-netty:$grpc_version"
+    compile "io.grpc:grpc-protobuf:$grpc_version"
+    compile "io.grpc:grpc-stub:$grpc_version"
+
+    compile group: "org.apache.kafka", name: "kafka-streams", version: "1.0.0-cp1"
+    compile group: "org.apache.kafka", name: "kafka-clients", version: "1.0.0-cp1"
+
+    compile group: 'mysql', name: 'mysql-connector-java', version: '8.0.11'
+
+    compile group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.11.0'
+    compile group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.11.0'
+
+    testCompile 'org.junit.jupiter:junit-jupiter-api:5.2.0'
+    testCompile "org.jetbrains.kotlin:kotlin-test"
+    testCompile "org.jetbrains.kotlin:kotlin-test-junit"
+    testRuntime 'org.junit.jupiter:junit-jupiter-engine:5.2.0'
+
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDir 'src/main/proto'
+        }
+    }
+}
+
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+
+mainClassName = "com.thapovan.orion.Main"
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+    }
+}
+
+jar {
+    manifest {
+        attributes ('Main-Class': "$mainClassName")
+    }
+    from {
+        configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+}
+
+clean {
+    delete protobuf.generatedFilesBaseDir
+}

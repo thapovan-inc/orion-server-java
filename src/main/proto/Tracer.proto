@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package com.thapovan.orion.proto;
+
+import "google/protobuf/Struct.proto";
+
+import "Span.proto";
+
+message ServerResponse {
+    bool success = 1;
+    string code = 2;
+    string message = 3;
+}
+
+message ControlRequest {
+    enum RequestType {
+        AUTH = 0;
+        END_STREAM = 1;
+    }
+    RequestType request_type = 1;
+    oneof params {
+        google.protobuf.Struct protoStruct = 2;
+        string jsonString = 3;
+    }
+}
+
+message UnaryRequest {
+    string auth_token = 1;
+    Span span_data = 2;
+}
+
+message StreamRequest {
+    oneof request {
+        ControlRequest control_request = 1;
+        Span span_data = 2;
+    }
+}
+
+message StreamResponse {
+    oneof response {
+        ServerResponse server_response = 1;
+    }
+}
+
+message BulkRequest {
+    string auth_token = 1;
+    repeated Span span_data = 2;
+}
+
+service Tracer {
+    rpc UploadSpanStream (stream StreamRequest) returns (ServerResponse);
+
+    rpc UploadSpan (UnaryRequest) returns (ServerResponse);
+    rpc UploadSpanBulk (BulkRequest) returns (ServerResponse);
+}

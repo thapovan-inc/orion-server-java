@@ -1,0 +1,42 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+
+package com.thapovan.orion.proto;
+
+import "google/protobuf/Struct.proto";
+
+enum LogLevel {
+    DEBUG = 0;
+    INFO = 1;
+    WARN = 2;
+    ERROR = 3;
+    CRITICAL = 4;
+}
+
+
+message StartEvent {
+    int64 event_id = 1;
+    oneof metadata {
+        google.protobuf.Struct protoStruct = 2;
+        string jsonString = 3;
+    }
+}
+
+message EndEvent {
+    int64 event_id = 1;
+    oneof metadata {
+        google.protobuf.Struct protoStruct = 2;
+        string jsonString = 3;
+    }
+}
+
+message LogEvent {
+    int64 event_id = 1;
+    LogLevel level = 2;
+    string message = 3;
+    oneof metadata {
+        google.protobuf.Struct protoStruct = 4;
+        string jsonString = 5;
+    }
+}
