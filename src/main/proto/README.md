@@ -20,3 +20,6 @@ For NodeJS Static client
 cd scripts
 ./nodejs_gen_client.sh
 ```
+-------------------------------------
+
+## [Documentation](./doc/)

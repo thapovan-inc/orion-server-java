@@ -32,7 +32,7 @@ enum LogLevel {
 
 
 message StartEvent {
-    int64 event_id = 1;
+    uint64 event_id = 1;
     oneof metadata {
         google.protobuf.Struct protoStruct = 2;
         string jsonString = 3;
@@ -40,7 +40,7 @@ message StartEvent {
 }
 
 message EndEvent {
-    int64 event_id = 1;
+    uint64 event_id = 1;
     oneof metadata {
         google.protobuf.Struct protoStruct = 2;
         string jsonString = 3;
@@ -48,7 +48,7 @@ message EndEvent {
 }
 
 message LogEvent {
-    int64 event_id = 1;
+    uint64 event_id = 1;
     LogLevel level = 2;
     string message = 3;
     oneof metadata {
