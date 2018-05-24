@@ -7,10 +7,10 @@ class FootprintBuilder{
 
     companion object: TopologyBuilder {
         override fun buildGraph(streamsBuilder: StreamsBuilder) {
-            val requestStream = streamsBuilder.stream<String,ByteArray>(KafkaProducer.REQUEST_TOPIC)
-                .groupBy { key, value ->
-                    key.split("_")[0]
-                }
+//            val requestStream = streamsBuilder.stream<String,ByteArray>(KafkaProducer.REQUEST_TOPIC)
+//                .groupBy { key, value ->
+//                    key.split("_")[0]
+//                }
         }
 
     }

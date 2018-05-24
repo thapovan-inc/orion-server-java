@@ -25,7 +25,7 @@ class KafkaStream {
 
         val streamBuilder = StreamsBuilder()
 
-        FootprintBuilder.buildGraph(streamBuilder)
+//        FootprintBuilder.buildGraph(streamBuilder)
 
         streamBuilder.stream<String,ByteArray>("incoming-request")
             .foreach { key: String, bufBytes: ByteArray ->
