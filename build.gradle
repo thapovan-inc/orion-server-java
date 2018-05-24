@@ -112,3 +112,7 @@ jar {
 clean {
     delete protobuf.generatedFilesBaseDir
 }
+
+tasks.withType(Tar) {
+    compression = Compression.GZIP
+}

@@ -5,7 +5,9 @@ import com.thapovan.orion.stream.KafkaStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Properties;
 
 public class Main {
@@ -17,7 +19,14 @@ public class Main {
             server.start(20691);
 
             Properties kafkaStreamProperties = new Properties();
-            kafkaStreamProperties.load(ClassLoader.getSystemResourceAsStream("kafka_stream.properties"));
+            InputStream kafkaStreamPropertiesStream;
+            String kafkaStreamPropertiesFile = System.getenv("KAFKA_STREAM_PROPERTIES");
+            if (kafkaStreamPropertiesFile != null && kafkaStreamPropertiesFile.length() > 0) {
+                kafkaStreamPropertiesStream = new FileInputStream(kafkaStreamPropertiesFile);
+            } else {
+                kafkaStreamPropertiesStream = ClassLoader.getSystemResourceAsStream("kafka_stream.properties");
+            }
+            kafkaStreamProperties.load(kafkaStreamPropertiesStream);
 
             KafkaStream stream = new KafkaStream();
             stream.start(kafkaStreamProperties);

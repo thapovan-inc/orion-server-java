@@ -24,6 +24,9 @@ class KafkaStream {
         streamConfig[StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG] = Serdes.ByteArray()::class.java.name
 
         val streamBuilder = StreamsBuilder()
+
+        FootprintBuilder.buildGraph(streamBuilder)
+
         streamBuilder.stream<String,ByteArray>("incoming-request")
             .foreach { key: String, bufBytes: ByteArray ->
                 val span = Span.parseFrom(bufBytes)

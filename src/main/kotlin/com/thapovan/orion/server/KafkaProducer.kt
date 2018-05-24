@@ -24,6 +24,8 @@ import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.apache.logging.log4j.LogManager
+import java.io.FileInputStream
+import java.io.InputStream
 import java.lang.Exception
 import java.util.*
 
@@ -34,8 +36,17 @@ object KafkaProducer {
     private val producer: KafkaProducer<String,ByteArray>
     private val LOG = LogManager.getLogger(this.javaClass)
 
+    val REQUEST_TOPIC = "incoming-request"
+
     init {
-        producerProperties.load(ClassLoader.getSystemResourceAsStream("kafka_producer.properties"))
+        val producerPropertiesFile = System.getenv("KAFKA_PRODUCER_PROPERTIES")
+        var producerPropertiesStream: InputStream
+        producerPropertiesStream = if (producerPropertiesFile != null) {
+            FileInputStream(producerPropertiesFile)
+        } else {
+            ClassLoader.getSystemResourceAsStream("kafka_producer.properties")
+        }
+        producerProperties.load(producerPropertiesStream)
         producerProperties[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.qualifiedName
         producerProperties[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.qualifiedName
         producer = KafkaProducer(producerProperties)
@@ -51,7 +62,8 @@ object KafkaProducer {
         }
         val key = "${span.traceContext.traceId}_${span.spanId}_${eventID}"
         val value:ByteArray = span.toByteArray()
-        val producerRecord = ProducerRecord("incoming-request",key,value)
+        val partition = key[0].toInt().rem(4)
+        val producerRecord = ProducerRecord(REQUEST_TOPIC, partition, key,value)
         producer.send(producerRecord, { recordMetaData: RecordMetadata, exception: Exception? ->
             if (exception != null) {
                 LOG.error("Error when pushing record to kafka broken: ${exception.message}",exception)

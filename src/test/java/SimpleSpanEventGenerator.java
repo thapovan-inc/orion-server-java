@@ -3,6 +3,7 @@ import com.thapovan.orion.proto.*;
 import com.thapovan.orion.server.KafkaProducer;
 import com.thapovan.orion.server.TracerServer;
 import com.thapovan.orion.stream.KafkaStream;
+import io.grpc.ManagedChannelBuilder;
 import io.grpc.netty.NettyChannelBuilder;
 import org.junit.BeforeClass;
 import org.junit.jupiter.api.AfterAll;
@@ -35,7 +36,7 @@ public class SimpleSpanEventGenerator {
     @Test
     public void spanEventGenerator() {
         try {
-            TracerGrpc.TracerBlockingStub client = TracerGrpc.newBlockingStub(NettyChannelBuilder
+            TracerGrpc.TracerBlockingStub client = TracerGrpc.newBlockingStub(ManagedChannelBuilder
                     .forAddress("localhost", 20691)
                     .usePlaintext()
                     .build());
@@ -43,10 +44,15 @@ public class SimpleSpanEventGenerator {
             Trace traceContext = Trace.newBuilder().setTraceId(UUID.randomUUID().toString()).build();
             Span simpleSpan = Span.newBuilder().setStartEvent(spanStartEvent)
                     .setSpanId(UUID.randomUUID().toString())
+                    .setEventLocation("SimpleSpanEventGenerator::spanEventGenerator::47")
+                    .setServiceName("JUnit_Runner")
+                    .setTimestamp(System.currentTimeMillis()*1000)
                     .setTraceContext(traceContext)
                     .build();
             UnaryRequest request = UnaryRequest.newBuilder().setSpanData(simpleSpan).build();
             ServerResponse response = client.uploadSpan(request);
+
+
             assertEquals(true, response.getSuccess(), "Expected success field in the response to be true");
             KafkaProducer.INSTANCE.flush();
             Thread.sleep(10000);
