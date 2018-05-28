@@ -25,13 +25,7 @@ class KafkaStream {
 
         val streamBuilder = StreamsBuilder()
 
-//        FootprintBuilder.buildGraph(streamBuilder)
-
-        streamBuilder.stream<String,ByteArray>("incoming-request")
-            .foreach { key: String, bufBytes: ByteArray ->
-                val span = Span.parseFrom(bufBytes)
-                LOG.info("JSON span: {}",JsonFormat.printer().preservingProtoFieldNames().print(span))
-            }
+        FootprintBuilder.buildGraph(streamBuilder)
         kafkaStream = KafkaStreams(streamBuilder.build(),streamConfig)
         kafkaStream?.cleanUp()
         kafkaStream?.start()
