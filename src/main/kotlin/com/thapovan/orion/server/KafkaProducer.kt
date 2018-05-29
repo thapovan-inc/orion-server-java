@@ -68,7 +68,7 @@ object KafkaProducer {
             if (exception != null) {
                 LOG.error("Error when pushing record to kafka broken: ${exception.message}",exception)
             } else {
-//                LOG.info("Published record. offset: ${recordMetaData.offset()}")
+                LOG.info("Published record. offset: ${recordMetaData.offset()}")
             }
         })
     }
