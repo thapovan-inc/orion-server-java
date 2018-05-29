@@ -20,8 +20,6 @@ option java_multiple_files = true;
 
 package com.thapovan.orion.proto;
 
-import "google/protobuf/struct.proto";
-
 enum LogLevel {
     DEBUG = 0;
     INFO = 1;
@@ -34,7 +32,6 @@ enum LogLevel {
 message StartEvent {
     uint64 event_id = 1;
     oneof metadata {
-        google.protobuf.Struct protoStruct = 2;
         string jsonString = 3;
     }
 }
@@ -42,7 +39,6 @@ message StartEvent {
 message EndEvent {
     uint64 event_id = 1;
     oneof metadata {
-        google.protobuf.Struct protoStruct = 2;
         string jsonString = 3;
     }
 }
@@ -52,7 +48,6 @@ message LogEvent {
     LogLevel level = 2;
     string message = 3;
     oneof metadata {
-        google.protobuf.Struct protoStruct = 4;
         string jsonString = 5;
     }
 }

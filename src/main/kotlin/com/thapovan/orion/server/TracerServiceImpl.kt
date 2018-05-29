@@ -27,7 +27,7 @@ internal class TracerServiceImpl: TracerGrpc.TracerImplBase() {
     override fun uploadSpan(request: UnaryRequest?, responseObserver: StreamObserver<ServerResponse>?) {
         try {
             KafkaProducer.pushSpanEvent(request?.spanData!!)
-            LOG.info("Published request to kafka")
+//            LOG.info("Published request to kafka")
             val response = ServerResponse.newBuilder()
                 .setSuccess(true)
                 .setMessage("")

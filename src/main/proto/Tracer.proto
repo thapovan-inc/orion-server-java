@@ -20,8 +20,6 @@ option java_multiple_files = true;
 
 package com.thapovan.orion.proto;
 
-import "google/protobuf/struct.proto";
-
 import "Span.proto";
 
 message ServerResponse {
@@ -37,7 +35,6 @@ message ControlRequest {
     }
     RequestType request_type = 1;
     oneof params {
-        google.protobuf.Struct protoStruct = 2;
         string jsonString = 3;
     }
 }
