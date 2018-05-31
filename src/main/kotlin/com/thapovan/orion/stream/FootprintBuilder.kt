@@ -16,6 +16,11 @@ class FootprintBuilder{
         override fun buildGraph(streamsBuilder: StreamsBuilder) {
             val aggTypeToken = object : TypeToken<List<Span>>() {}.type
             val incomingRequest = streamsBuilder.stream<String,ByteArray>("incoming-request")
+            incomingRequest
+                .foreach { key: String, bufBytes: ByteArray ->
+                    val span = Span.parseFrom(bufBytes)
+                    LOG.info("JSON span: {}", JsonFormat.printer().preservingProtoFieldNames().print(span))
+                }
             val footPrintStream = incomingRequest
                 .filter { key, value ->
                     key != null && value != null && value.size > 2
@@ -79,11 +84,6 @@ class FootprintBuilder{
                         LOG.info(Gson().toJson(spanIDMap))
                     }
                 })
-            incomingRequest
-                .foreach { key: String, bufBytes: ByteArray ->
-                    val span = Span.parseFrom(bufBytes)
-                    LOG.info("JSON span: {}", JsonFormat.printer().preservingProtoFieldNames().print(span))
-                }
         }
 
     }
