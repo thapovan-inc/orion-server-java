@@ -53,17 +53,23 @@ object KafkaProducer {
     }
 
     fun pushSpanEvent(span: Span) {
-        val eventID = when (span.eventCase) {
-            null -> return@pushSpanEvent
+        val eventID: Long = when (span.eventCase) {
+            null -> {
+                LOG.debug("Event is null")
+                return@pushSpanEvent
+            }
             Span.EventCase.START_EVENT -> span.startEvent.eventId
             Span.EventCase.END_EVENT -> span.endEvent.eventId
             Span.EventCase.LOG_EVENT -> span.logEvent.eventId
-            Span.EventCase.EVENT_NOT_SET -> return@pushSpanEvent
+            Span.EventCase.EVENT_NOT_SET -> {
+                LOG.debug("Event not set")
+                return@pushSpanEvent
+            }
         }
         val key = "${span.traceContext.traceId}_${span.spanId}_${eventID}"
         val value:ByteArray = span.toByteArray()
-        val partition = key[0].toInt().rem(4)
-        val producerRecord = ProducerRecord(REQUEST_TOPIC, partition, key,value)
+//        val partition = key[0].toInt().rem(4)
+        val producerRecord = ProducerRecord(REQUEST_TOPIC, 0, key,value)
         producer.send(producerRecord, { recordMetaData: RecordMetadata, exception: Exception? ->
             if (exception != null) {
                 LOG.error("Error when pushing record to kafka broken: ${exception.message}",exception)

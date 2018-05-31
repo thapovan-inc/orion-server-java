@@ -1,6 +1,7 @@
 package com.thapovan.orion;
 
-import com.thapovan.orion.server.TracerServer;
+import com.thapovan.orion.server.TracerGrpcServer;
+import com.thapovan.orion.server.TracerHttpServer;
 import com.thapovan.orion.stream.KafkaStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -15,8 +16,11 @@ public class Main {
 
     public static void main(String[] args){
         try {
-            TracerServer server = new TracerServer();
+            TracerGrpcServer server = new TracerGrpcServer();
             server.start(20691);
+
+            TracerHttpServer httpServer = new TracerHttpServer();
+            httpServer.start(9017);
 
             Properties kafkaStreamProperties = new Properties();
             InputStream kafkaStreamPropertiesStream;

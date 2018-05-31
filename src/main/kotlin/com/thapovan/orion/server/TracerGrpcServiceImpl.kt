@@ -20,14 +20,14 @@ import com.thapovan.orion.proto.*
 import io.grpc.stub.StreamObserver
 import org.apache.logging.log4j.LogManager
 
-internal class TracerServiceImpl: TracerGrpc.TracerImplBase() {
+internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
 
-    private val LOG = LogManager.getLogger(TracerServiceImpl::class.java)
+    private val LOG = LogManager.getLogger(TracerGrpcServiceImpl::class.java)
 
     override fun uploadSpan(request: UnaryRequest?, responseObserver: StreamObserver<ServerResponse>?) {
         try {
             KafkaProducer.pushSpanEvent(request?.spanData!!)
-//            LOG.info("Published request to kafka")
+            LOG.info("Published request to kafka")
             val response = ServerResponse.newBuilder()
                 .setSuccess(true)
                 .setMessage("")
@@ -36,7 +36,7 @@ internal class TracerServiceImpl: TracerGrpc.TracerImplBase() {
             responseObserver?.onNext(response)
             responseObserver?.onCompleted()
         } catch (e: Throwable) {
-            LOG.error("Error in uploadSpan",e);
+            LOG.error("Error in uploadSpan",e)
         }
     }
 

@@ -60,6 +60,8 @@ dependencies {
     compile "io.grpc:grpc-protobuf:$grpc_version"
     compile "io.grpc:grpc-stub:$grpc_version"
 
+    compile "com.sparkjava:spark-core:2.7.2"
+
     compile group: "org.apache.kafka", name: "kafka-streams", version: "1.0.0-cp1"
     compile group: "org.apache.kafka", name: "kafka-clients", version: "1.0.0-cp1"
 

@@ -17,6 +17,9 @@ class FootprintBuilder{
             val aggTypeToken = object : TypeToken<List<Span>>() {}.type
             val incomingRequest = streamsBuilder.stream<String,ByteArray>("incoming-request")
             val footPrintStream = incomingRequest
+                .filter { key, value ->
+                    key != null && value != null && value.size > 2
+                }
                 .groupBy { key, value ->
                     key.split("_")[0]
                 }

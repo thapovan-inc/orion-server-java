@@ -22,32 +22,32 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import java.io.IOException
 
-class TracerServer {
+class TracerGrpcServer {
 
-    private var server: Server? = null
+    private var grpcServer: Server? = null
 
     private val LOG: Logger = LogManager.getLogger(this.javaClass)
 
     @Throws(IOException::class)
-    fun start(port: Int) {
-        /* The port on which the server should run */
-        server = ServerBuilder.forPort(port)
-            .addService(TracerServiceImpl())
+    fun start(grpcPort: Int) {
+        /* The port on which the grpcServer should run */
+        grpcServer = ServerBuilder.forPort(grpcPort)
+            .addService(TracerGrpcServiceImpl())
             .build()
             .start()
-        LOG.info("Tracer Server started and listening on port {}",port)
+        LOG.info("Tracer gRPC Server started and listening on port {}",grpcPort)
         Runtime.getRuntime().addShutdownHook(object : Thread() {
             override fun run() {
-                val LOG = LogManager.getLogger(this@TracerServer.javaClass)
+                val LOG = LogManager.getLogger(this@TracerGrpcServer.javaClass)
                 LOG.info("Tracer Server shutting down since JVM is shutting down")
-                this@TracerServer.stop()
-                LOG.info("Tracer server has been stopped")
+                this@TracerGrpcServer.stop()
+                LOG.info("Tracer grpcServer has been stopped")
             }
         })
     }
 
     fun stop() {
-        server?.shutdown()
+        grpcServer?.shutdown()
     }
 
     /**
@@ -55,7 +55,7 @@ class TracerServer {
      */
     @Throws(InterruptedException::class)
     fun blockUntilShutdown() {
-        server?.awaitTermination()
+        grpcServer?.awaitTermination()
     }
 
 }
