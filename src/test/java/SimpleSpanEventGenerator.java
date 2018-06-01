@@ -1,17 +1,9 @@
-import com.thapovan.orion.Main;
 import com.thapovan.orion.proto.*;
-import com.thapovan.orion.server.KafkaProducer;
-import com.thapovan.orion.server.TracerServer;
+import com.thapovan.orion.server.TracerGrpcServer;
 import com.thapovan.orion.stream.KafkaStream;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.netty.NettyChannelBuilder;
-import org.junit.BeforeClass;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.util.Properties;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,12 +11,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 public class SimpleSpanEventGenerator {
 
-    static TracerServer server;
+    static TracerGrpcServer server;
     static KafkaStream stream;
 //
 //    @BeforeAll
 //    public static void startServer() throws IOException {
-//        server = new TracerServer();
+//        server = new TracerGrpcServer();
 //        server.start(20691);
 //        Properties kafkaStreamProperties = new Properties();
 //        kafkaStreamProperties.load(ClassLoader.getSystemResourceAsStream("kafka_stream.properties"));

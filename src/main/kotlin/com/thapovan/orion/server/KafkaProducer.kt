@@ -36,7 +36,7 @@ object KafkaProducer {
     private val producer: KafkaProducer<String,ByteArray>
     private val LOG = LogManager.getLogger(this.javaClass)
 
-    val REQUEST_TOPIC = "incoming-request"
+    const val REQUEST_TOPIC = "incoming-request"
 
     init {
         val producerPropertiesFile = System.getenv("KAFKA_PRODUCER_PROPERTIES")
@@ -66,7 +66,7 @@ object KafkaProducer {
                 return@pushSpanEvent
             }
         }
-        val key = "${span.traceContext.traceId}_${span.spanId}_${eventID}"
+        val key = "${span.traceContext.traceId}_${span.spanId}_$eventID"
         val value:ByteArray = span.toByteArray()
 //        val partition = key[0].toInt().rem(4)
         val producerRecord = ProducerRecord(REQUEST_TOPIC, 0, key,value)
