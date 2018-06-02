@@ -21,7 +21,7 @@ import com.thapovan.orion.proto.Span
 fun validateSpanMessage(span: Span?): String? {
     var errorMessage: String? = null
     if(span == null) {
-        errorMessage = "Span message is null"
+        errorMessage = "Span object is null"
     } else {
 
     }
