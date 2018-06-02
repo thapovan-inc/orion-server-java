@@ -29,7 +29,7 @@ public class SimpleSpanEventGenerator {
     public void spanEventGenerator() {
         try {
             TracerGrpc.TracerBlockingStub client = TracerGrpc.newBlockingStub(NettyChannelBuilder
-                    .forAddress("54.83.197.74", 20691)
+                    .forAddress("localhost", 20691)
                     .usePlaintext()
                     .build());
             StartEvent spanStartEvent = StartEvent.newBuilder()
