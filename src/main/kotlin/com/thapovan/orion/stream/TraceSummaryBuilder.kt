@@ -14,15 +14,14 @@
  * limitations under the License.
  */
 
-package com.thapovan.orion.util
+package com.thapovan.orion.stream
 
 import com.thapovan.orion.proto.Span
+import org.apache.kafka.streams.StreamsBuilder
+import org.apache.kafka.streams.kstream.KStream
 
-fun validateSpanMessage(span: Span?): String? {
-    var errorMessage: String? = null
-    if(span == null) {
-        errorMessage = "Span object is null"
-    } else {
+object TraceSummaryBuilder {
+    fun buildGraph(streamsBuilder: StreamsBuilder, incomingRequestStream: KStream<String, ByteArray>) {
+
     }
-    return errorMessage
 }

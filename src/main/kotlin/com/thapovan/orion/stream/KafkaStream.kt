@@ -28,6 +28,7 @@ class KafkaStream {
         val incomingRequestStream = streamBuilder.stream<String,ByteArray>("incoming-request")
 
         JsonDebugStream.buildGraph(streamBuilder,incomingRequestStream)
+        SpanLifecycleStream.buildGraph(streamBuilder,incomingRequestStream)
         FootprintBuilder.buildGraph(streamBuilder,incomingRequestStream)
 
         kafkaStream = KafkaStreams(streamBuilder.build(),streamConfig)
