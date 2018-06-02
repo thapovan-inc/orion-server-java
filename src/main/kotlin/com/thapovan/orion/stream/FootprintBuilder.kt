@@ -69,7 +69,11 @@ class FootprintBuilder {
                                     else
                                         existingSpanNode.serviceName
                             if (existingSpanNode.startTime == 0L || spanNode < existingSpanNode) {
-                                existingSpanNode.startTime = spanNode.startTime
+                                existingSpanNode.startTime = span.timestamp
+                            } else {
+                                if(span.hasEndEvent()) {
+                                    existingSpanNode.endTime = span.timestamp
+                                }
                             }
 
                             if ((existingSpanNode.parentId.isNullOrEmpty() // -> means that the parent was not defined so far.. so this node resides at the top of the tree
