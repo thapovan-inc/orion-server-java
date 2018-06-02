@@ -68,12 +68,16 @@ object KafkaProducer {
         }
         val normSpandId = span.spanId.toLowerCase()
         val normTraceId = span.traceContext.traceId.toLowerCase()
+
+        //new objects
         val newSpanBuilder = span.toBuilder()
-        newSpanBuilder.setSpanId(normSpandId)
-        val newSpan = newSpanBuilder.build()
         val newTraceContextBuilder = span.traceContext.toBuilder()
         newTraceContextBuilder.setTraceId(normTraceId)
         val newTrace = newTraceContextBuilder.build()
+
+
+        newSpanBuilder.setSpanId(normSpandId).setTraceContext(newTrace)
+        val newSpan = newSpanBuilder.build()
 
         val key = "${newTrace.traceId}_${newSpan.spanId}_$eventID"
         val value:ByteArray = newSpan.toByteArray()
