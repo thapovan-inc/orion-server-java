@@ -26,6 +26,7 @@ class KafkaStream {
         val streamBuilder = StreamsBuilder()
 
         FootprintBuilder.buildGraph(streamBuilder)
+
         kafkaStream = KafkaStreams(streamBuilder.build(),streamConfig)
         kafkaStream?.cleanUp()
         kafkaStream?.start()

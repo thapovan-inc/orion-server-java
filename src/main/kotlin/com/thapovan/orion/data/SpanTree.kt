@@ -14,16 +14,20 @@
  * limitations under the License.
  */
 
-package com.thapovan.orion.util
+package com.thapovan.orion.data
 
-import com.thapovan.orion.proto.Span
+import com.google.gson.annotations.Expose
 
-fun validateSpanMessage(span: Span?): String? {
-    var errorMessage: String? = null
-    if(span == null) {
-        errorMessage = "Span message is null"
-    } else {
+class SpanTree {
 
+    @Expose(serialize = true, deserialize = true)
+    val spanMap = HashMap<String, SpanNode>()
+
+    @Expose(serialize = true, deserialize = true)
+    var rootNode: SpanNode
+
+    constructor(rootNode: SpanNode) {
+        this.rootNode = rootNode
+        this.spanMap["ROOT"] = rootNode
     }
-    return errorMessage
 }
