@@ -36,6 +36,16 @@ public class Main {
             stream.start(kafkaStreamProperties);
 
             server.blockUntilShutdown();
+
+            // es search summaries index consumer thread
+            /*Thread t1 = new Thread(new KafkaESSummaryConsumer());
+            t1.start();
+
+            // es search footprint index consumer thread
+            Thread t2 = new Thread(new KafkaESFootPrintConsumer());
+            t2.start();*/
+
+
         } catch (IOException e) {
             LOG.error("IOException occured",e);
         } catch (InterruptedException e) {
