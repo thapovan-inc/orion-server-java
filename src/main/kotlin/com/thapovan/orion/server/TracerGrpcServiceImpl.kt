@@ -27,7 +27,7 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
 
     override fun uploadSpan(request: UnaryRequest?, responseObserver: StreamObserver<ServerResponse>?) {
         try {
-            var response: ServerResponse? = null;
+            var response: ServerResponse? = null
             var spanValidationMsg = validateSpanMessage(request?.spanData)
             if(spanValidationMsg.isNullOrEmpty()){
                 KafkaProducer.pushSpanEvent(request?.spanData!!)
@@ -54,17 +54,24 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
     }
 
     override fun uploadSpanBulk(request: BulkRequest?, responseObserver: StreamObserver<ServerResponse>?) {
-        request?.spanDataList?.forEach {
-            KafkaProducer.pushSpanEvent(it)
+        var spans = request?.spanDataList
+
+        var response: ServerResponse? = null
+
+        val validationMsg = validateBulkSpans(spans)
+        if(validationMsg.isNullOrEmpty()){
+            spans?.forEach {
+               KafkaProducer.pushSpanEvent(it)
+            }
         }
-        val response = ServerResponse.newBuilder()
-            .setSuccess(true)
-            .setMessage("")
-            .setCode("")
-            .build()
-        responseObserver?.onNext(response)
-        responseObserver?.onCompleted()
-    }
+          response = ServerResponse.newBuilder()
+                .setSuccess(validationMsg.isNullOrEmpty())
+                .setMessage(validationMsg)
+                .setCode("")
+                .build()
+            responseObserver?.onNext(response)
+            responseObserver?.onCompleted()
+        }
 
     override fun uploadSpanStream(responseObserver: StreamObserver<ServerResponse>?): StreamObserver<StreamRequest> {
         return super.uploadSpanStream(responseObserver)
