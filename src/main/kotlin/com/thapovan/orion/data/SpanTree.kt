@@ -21,7 +21,7 @@ import com.google.gson.annotations.Expose
 class SpanTree {
 
     @Expose(serialize = true, deserialize = true)
-    val spanMap = HashMap<String, SpanNode>()
+    private val spanMap = HashMap<String, SpanNode>()
 
     @Expose(serialize = true, deserialize = true)
     var rootNode: SpanNode
@@ -29,5 +29,14 @@ class SpanTree {
     constructor(rootNode: SpanNode) {
         this.rootNode = rootNode
         this.spanMap["ROOT"] = rootNode
+    }
+
+    fun merge(spanTree: SpanTree) {
+        TODO("Must work out the algorithm for merging two trees")
+    }
+
+    fun registerSpan(spanNode: SpanNode) {
+        val compactSpan = spanNode.getCompactClone()
+        this.spanMap[compactSpan.spanId] = compactSpan
     }
 }

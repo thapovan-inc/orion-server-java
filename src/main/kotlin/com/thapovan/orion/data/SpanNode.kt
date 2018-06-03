@@ -19,11 +19,11 @@ package com.thapovan.orion.data
 import com.google.gson.annotations.Expose
 import java.util.*
 
-class SpanNode (@Expose(serialize = true,deserialize = true) val spanId: String,
-                @Expose(serialize = true,deserialize = true) var serviceName: String? = null,
+class SpanNode (@Expose(serialize = true, deserialize = true) val spanId: String,
+                @Expose(serialize = true, deserialize = true) var serviceName: String? = null,
                 @Expose(serialize = true, deserialize = true) var parentId: String? = null,
                 @Expose(serialize = true, deserialize = true) var startTime: Long = 0,
-                @Expose(serialize = true,deserialize = true) val children: MutableList<SpanNode> = ArrayList()) : Comparable<SpanNode> {
+                @Expose(serialize = true, deserialize = true) val children: MutableList<SpanNode> = ArrayList()) : Comparable<SpanNode> {
 
     override fun compareTo(other: SpanNode): Int {
         return startTime.compareTo(other.startTime)
@@ -47,5 +47,15 @@ class SpanNode (@Expose(serialize = true,deserialize = true) val spanId: String,
             }
         }
         return null
+    }
+
+    fun getCompactClone(): SpanNode {
+        return SpanNode(spanId,serviceName,parentId,startTime)
+    }
+
+    fun addChild(spanNode: SpanNode) {
+        spanNode.parentId = spanId
+        children.add(spanNode)
+        children.sort()
     }
 }
