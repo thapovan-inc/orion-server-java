@@ -55,20 +55,32 @@ object SpanLifecycleProcessor {
                     val newSpan = if (span.hasStartEvent()) {
                         SpanNode(
                             span.spanId,
-                            if (span.serviceName.isNullOrEmpty()) spanNode.serviceName else span.serviceName,
-                            if (span.parentSpanId.isNullOrEmpty()) spanNode.parentId else span.parentSpanId,
+                            if (span.serviceName.isNullOrEmpty()  && span.serviceName.isNullOrBlank() ) spanNode.serviceName else span.serviceName,
+                            if (span.parentSpanId.isNullOrEmpty() && span.parentSpanId.isNullOrBlank()) spanNode.parentId else span.parentSpanId,
                             span.timestamp,
                             spanNode.endTime
                         )
                     } else if (span.hasEndEvent()) {
                         SpanNode(
                             span.spanId,
-                            if (span.serviceName.isNullOrEmpty()) spanNode.serviceName else span.serviceName,
-                            if (span.parentSpanId.isNullOrEmpty()) spanNode.parentId else span.parentSpanId,
+                            if (span.serviceName.isNullOrEmpty()  && span.serviceName.isNullOrBlank() ) spanNode.serviceName else span.serviceName,
+                            if (span.parentSpanId.isNullOrEmpty() && span.parentSpanId.isNullOrBlank()) spanNode.parentId else span.parentSpanId,
                             spanNode.startTime,
                             span.timestamp
                         )
                     } else {
+                        if (!span.serviceName.isNullOrEmpty() && span.serviceName.isNullOrBlank()) {
+                            spanNode.serviceName = span.serviceName
+                        }
+                        if (!span.parentSpanId.isNullOrEmpty() && span.parentSpanId.isNullOrBlank()) {
+                            spanNode.parentId = span.parentSpanId
+                        }
+                        if (spanNode.startTime == 0L || (spanNode.startTime > span.timestamp)) {
+                            spanNode.startTime = span.timestamp
+                        }
+                        if(spanNode.endTime == 0L || (spanNode.endTime < span.timestamp)) {
+                            spanNode.endTime = span.timestamp
+                        }
                         spanNode
                     }
                     gson.toJson(newSpan,aggTypeToken).toByteArray()

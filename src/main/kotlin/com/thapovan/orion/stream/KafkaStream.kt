@@ -36,6 +36,11 @@ class KafkaStream {
 
         val incomingRequestStream = streamBuilder.stream<String,ByteArray>("incoming-request")
 
+        val incomingRequestSpanStream = incomingRequestStream
+            .mapValues {
+                Span.parseFrom(it)
+            }
+
         JsonDebugStream.buildGraph(streamBuilder,incomingRequestStream)
         SpanEventSegregator.buildGraph(streamBuilder,incomingRequestStream)
 
@@ -45,7 +50,7 @@ class KafkaStream {
                 Span.parseFrom(it)
             }
 
-        SpanLifecycleProcessor.buildGraph(streamBuilder,protoSpanStartStopEventStream)
+        SpanLifecycleProcessor.buildGraph(streamBuilder,incomingRequestSpanStream)
 
         val spanStartStopRaw = streamBuilder.stream<String,ByteArray>("span-start-stop")
         val spanStartStop = spanStartStopRaw
