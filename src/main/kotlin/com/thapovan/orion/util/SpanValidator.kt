@@ -17,13 +17,45 @@
 package com.thapovan.orion.util
 
 import com.thapovan.orion.proto.Span
+import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 fun validateSpanMessage(span: Span?): String? {
     var errorMessage: String? = null
     if(span == null) {
         errorMessage = "Span object is null"
-    } else {
+    }else if(span.spanId.isNullOrBlank()){
+        errorMessage = "invalid span_id"
+    }else if(!checkUUID(span.spanId)){
+        errorMessage="span_id format is invalid"
+    } else if(!checkUUID(span.traceContext.traceId)){
+        errorMessage="trace_id is not valid"
+    }else if(!span.parentSpanId.isNullOrBlank() && !checkUUID(span.parentSpanId)){
+        errorMessage="parent span id format is invalid"
+    }else if(!isHostClientTimeDiffExceeds(span.timestamp)){
+        errorMessage="please verify system time"
+    }else if(span.serviceName.isNullOrBlank()){
+        errorMessage="service name is invalid"
     }
     return errorMessage
+}
+
+fun isHostClientTimeDiffExceeds(timestamp: Long): Boolean{
+    var timestamp = timestamp/1000;
+
+    var thresholdTime = 5*60*1000;
+    var currentTime = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli()
+    println("currentTime: "+currentTime)
+    println("timestamp: "+timestamp)
+    val timeDiff = Math.abs(timestamp - currentTime)
+    println("timeDiff: "+timeDiff)
+    return timeDiff > thresholdTime
+
+}
+
+fun checkUUID(UUID: String): Boolean{
+    var isUUID: Boolean =false;
+
+    val regex ="^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$".toRegex();
+    return regex.containsMatchIn(UUID)
 }

@@ -66,8 +66,21 @@ object KafkaProducer {
                 return@pushSpanEvent
             }
         }
+        val normSpandId = span.spanId.toLowerCase()
+        val normTraceId = span.traceContext.traceId.toLowerCase()
+        val normParentSpanId = span.parentSpanId?.toLowerCase()
+
+        //new objects
+        val newSpanBuilder = span.toBuilder()
+        val newTraceContextBuilder = span.traceContext.toBuilder()
+        newTraceContextBuilder.setTraceId(normTraceId)
+        val newTrace = newTraceContextBuilder.build()
+
+
+        newSpanBuilder.setSpanId(normSpandId).setParentSpanId(normParentSpanId).setTraceContext(newTrace)
+        val newSpan = newSpanBuilder.build()
         val key = "${span.traceContext.traceId}_${span.spanId}_$eventID"
-        val value:ByteArray = span.toByteArray()
+        val value:ByteArray = newSpan.toByteArray()
         val partition = key[0].toInt().rem(4)
         val producerRecord = ProducerRecord(REQUEST_TOPIC, partition, key,value)
         producer.send(producerRecord, { recordMetaData: RecordMetadata, exception: Exception? ->
