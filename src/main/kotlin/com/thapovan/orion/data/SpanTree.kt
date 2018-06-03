@@ -58,12 +58,20 @@ class SpanTree {
         anomalySpans.clear()
         spanMap.values.forEach {
             val spanSummary = it.logSummary
+            var startCount = 0
+            var stopCount = 0
             spanSummary.entries.forEach {
                 val key = it.key
                 val value = it.value
                 when (key) {
-                    "START" -> START += value
-                    "STOP" -> STOP += value
+                    "START" -> {
+                        START += value
+                        startCount +=value
+                    }
+                    "STOP" -> {
+                        STOP += value
+                        stopCount += value
+                    }
                     "DEBUG" -> DEBUG += value
                     "INFO" -> INFO += value
                     "WARN" -> WARN += value
@@ -71,7 +79,9 @@ class SpanTree {
                     "CRITICAL" -> CRITICAL += value
                 }
             }
-            if(!it.spanId.equals("ROOT") && (it.startTime == 0L || it.endTime == 0L)) {
+            if(!it.spanId.equals("ROOT") && (
+                        (it.startTime == 0L || it.endTime == 0L)
+                        || (startCount != 1 || stopCount != 1))) {
                 ANOMALY++
                 anomalySpans.add(it.spanId)
             }
