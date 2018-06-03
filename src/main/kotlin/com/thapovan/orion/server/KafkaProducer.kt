@@ -68,8 +68,8 @@ object KafkaProducer {
         }
         val key = "${span.traceContext.traceId}_${span.spanId}_$eventID"
         val value:ByteArray = span.toByteArray()
-//        val partition = key[0].toInt().rem(4)
-        val producerRecord = ProducerRecord(REQUEST_TOPIC, 0, key,value)
+        val partition = key[0].toInt().rem(4)
+        val producerRecord = ProducerRecord(REQUEST_TOPIC, partition, key,value)
         producer.send(producerRecord, { recordMetaData: RecordMetadata, exception: Exception? ->
             if (exception != null) {
                 LOG.error("Error when pushing record to kafka broken: ${exception.message}",exception)

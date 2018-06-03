@@ -20,10 +20,10 @@ import com.google.gson.annotations.Expose
 
 data class TraceSummary(
     @Expose(serialize = true, deserialize = true)val traceId: String,
-    @Expose(serialize = true, deserialize = true)var startTime: Long,
+    @Expose(serialize = true, deserialize = true)var startTime: Long = 0,
     @Expose(serialize = true, deserialize = true)var endTime: Long = 0,
-    @Expose(serialize = true, deserialize = true)var email: String?,
-    @Expose(serialize = true, deserialize = true)var userId: String?,
+    @Expose(serialize = true, deserialize = true)var email: String? = null,
+    @Expose(serialize = true, deserialize = true)var userId: String? = null,
     @Expose(serialize = true, deserialize = true)var serviceNames: MutableList<String> = ArrayList<String>(),
-    @Expose(serialize = true, deserialize = true)var country: String?,
-    @Expose(serialize = true, deserialize = true)var ip: String?)
+    @Expose(serialize = true, deserialize = true)var country: String? = null,
+    @Expose(serialize = true, deserialize = true)var ip: String? = null)

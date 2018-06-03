@@ -7,6 +7,7 @@ import com.google.protobuf.util.JsonFormat
 import com.thapovan.orion.data.SpanNode
 import com.thapovan.orion.data.SpanTree
 import com.thapovan.orion.proto.Span
+import com.thapovan.orion.stream.KafkaStream.Companion.WINDOW_DURATION_MS
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.KStream
@@ -17,9 +18,6 @@ import org.apache.logging.log4j.LogManager
 class FootprintBuilder {
 
     companion object {
-
-        //TODO: Must be configurable
-        const val WINDOW_DURATION_MS = 5L * 60L * 1000L // 5 mins
 
         private var LOG = LogManager.getLogger(FootprintBuilder::class.java)
 
@@ -49,7 +47,7 @@ class FootprintBuilder {
                     },
                     { key, value, bValueAggregate ->
                         val footPrintTree =
-                            Gson().fromJson<SpanTree>(String(bValueAggregate), aggTypeToken)
+                            gson.fromJson<SpanTree>(String(bValueAggregate), aggTypeToken)
                         val tree = footPrintTree.rootNode
                         val span = Span.parseFrom(value)
                         val spanNode = SpanNode(
@@ -69,7 +67,11 @@ class FootprintBuilder {
                                     else
                                         existingSpanNode.serviceName
                             if (existingSpanNode.startTime == 0L || spanNode < existingSpanNode) {
-                                existingSpanNode.startTime = spanNode.startTime
+                                existingSpanNode.startTime = span.timestamp
+                            } else {
+                                if(span.hasEndEvent()) {
+                                    existingSpanNode.endTime = span.timestamp
+                                }
                             }
 
                             if ((existingSpanNode.parentId.isNullOrEmpty() // -> means that the parent was not defined so far.. so this node resides at the top of the tree

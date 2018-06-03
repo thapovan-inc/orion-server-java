@@ -14,16 +14,12 @@
  * limitations under the License.
  */
 
-package com.thapovan.orion.util
+package com.thapovan.orion.data
 
-import com.thapovan.orion.proto.Span
-import java.time.ZoneOffset
+import com.google.gson.annotations.Expose
 
-fun validateSpanMessage(span: Span?): String? {
-    var errorMessage: String? = null
-    if(span == null) {
-        errorMessage = "Span object is null"
-    } else {
-    }
-    return errorMessage
-}
+data class MetaDataObject(@Expose(serialize = true, deserialize = true) val spanId: String,
+                          @Expose(serialize = true, deserialize = true) val eventId: Long,
+                          @Expose(serialize = true, deserialize = true) val timestamp: Long,
+                          @Expose(serialize = true, deserialize = true) val logLevel: String,
+                          @Expose(serialize = true, deserialize = true) val metadata: String)

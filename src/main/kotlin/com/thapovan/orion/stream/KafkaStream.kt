@@ -1,6 +1,9 @@
 package com.thapovan.orion.stream
 
-import com.google.protobuf.util.JsonFormat
+import com.google.gson.GsonBuilder
+import com.google.gson.reflect.TypeToken
+import com.thapovan.orion.data.MetaDataObject
+import com.thapovan.orion.data.SpanNode
 import com.thapovan.orion.proto.Span
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
@@ -25,11 +28,40 @@ class KafkaStream {
 
         val streamBuilder = StreamsBuilder()
 
+        val gson = GsonBuilder().excludeFieldsWithoutExposeAnnotation().create()
+        val spanNodeType = object : TypeToken<SpanNode>() {}.type
+        val metadataObjectType = object : TypeToken<MetaDataObject>() {}.type
+
         val incomingRequestStream = streamBuilder.stream<String,ByteArray>("incoming-request")
 
         JsonDebugStream.buildGraph(streamBuilder,incomingRequestStream)
-        SpanLifecycleStream.buildGraph(streamBuilder,incomingRequestStream)
+        SpanEventSegregator.buildGraph(streamBuilder,incomingRequestStream)
+
+        val protoSpanStartStopEventStream
+                = streamBuilder.stream<String,ByteArray>("proto-span-start-stop")
+            .mapValues {
+                Span.parseFrom(it)
+            }
+
+        SpanLifecycleProcessor.buildGraph(streamBuilder,protoSpanStartStopEventStream)
         FootprintBuilder.buildGraph(streamBuilder,incomingRequestStream)
+
+        val spanStartStop = streamBuilder.stream<String,ByteArray>("span-start-stop")
+            .mapValues {
+                gson.fromJson<SpanNode>(String(it),spanNodeType)
+            }
+
+        val protoLogEventStream = streamBuilder.stream<String,ByteArray>("proto-span-log")
+            .mapValues {
+                Span.parseFrom(it)
+            }
+
+        val metaDataObject = streamBuilder.stream<String,ByteArray>("span-metadata")
+            .mapValues {
+                gson.fromJson<MetaDataObject>(String(it),metadataObjectType)
+            }
+
+        TraceSummaryBuilder.buildGraph(streamBuilder,spanStartStop,metaDataObject)
 
         kafkaStream = KafkaStreams(streamBuilder.build(),streamConfig)
         kafkaStream?.cleanUp()
@@ -47,5 +79,10 @@ class KafkaStream {
 
     fun stop() {
         kafkaStream?.close()
+    }
+
+    companion object {
+        //TODO: Must be configurable
+        const val WINDOW_DURATION_MS = 5L * 60L * 1000L // 5 mins
     }
 }
