@@ -11,6 +11,7 @@ import org.elasticsearch.action.bulk.BulkResponse;
 import org.elasticsearch.client.transport.TransportClient;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.TransportAddress;
+import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +19,8 @@ import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 
 public class KafkaESFootPrintConsumer implements Runnable
@@ -76,23 +79,42 @@ public class KafkaESFootPrintConsumer implements Runnable
 
             while (true)
             {
-                ConsumerRecords<String, String> records = consumer.poll(100);
-
-                BulkRequestBuilder bulkRequest = client.prepareBulk();
-
-                for (ConsumerRecord<String, String> record : records)
+                try
                 {
-                    bulkRequest.add(client.prepareIndex("footprint", "_json", record.key())
-                            .setSource(record.value())).get();
+                    ConsumerRecords<String, String> records = consumer.poll(100);
+
+                    BulkRequestBuilder bulkRequest = client.prepareBulk();
+
+                    for (ConsumerRecord<String, String> record : records)
+                    {
+                        String key = record.key();
+
+                        String value = record.value();
+
+                        LOG.info("key: {}, value: {}", key, value);
+
+                        Map<String, String> doc = new HashMap<>();
+
+                        doc.put("traceId", key);
+
+                        doc.put("life_cycle_json", value);
+
+                        bulkRequest.add(client.prepareIndex("footprint", "fp", record.key())
+                                .setSource(doc, XContentType.JSON)).get();
+                    }
+
+                    consumer.commitAsync();
+
+                    BulkResponse bulkResponse = bulkRequest.get();
+
+                    ESUtil.logResponse(bulkResponse);
+
+                    bulkRequest = null;
                 }
-
-                consumer.commitAsync();
-
-                BulkResponse bulkResponse = bulkRequest.get();
-
-                ESUtil.logResponse(bulkResponse);
-
-                bulkRequest = null;
+                catch (Exception e)
+                {
+                    LOG.error("Error occurred", e);
+                }
             }
         }
         catch (WakeupException e)
