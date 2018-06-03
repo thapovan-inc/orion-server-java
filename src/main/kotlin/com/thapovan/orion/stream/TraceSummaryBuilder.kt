@@ -78,45 +78,51 @@ object TraceSummaryBuilder {
                         summaryBytes
                     }
                     val metadata = JsonParser().parse(metadataObjectValue.metadata)
-                    val jsonObject = metadata.asJsonObject
+                    val jsonObject = try {
+                        metadata.asJsonObject
+                    } catch (e: Throwable) {
+                        null
+                    }
                     val summary = if (summaryBytes == null || summaryBytes.size == 0) {
                         TraceSummary("")
                     } else {
                         gson.fromJson<TraceSummary>(String(summaryBytes), traceSummaryType)
                     }
-                    if (jsonObject.has("http")) {
-                        val http = jsonObject.getAsJsonObject("http")
-                        if (http.has("request")) {
-                            val request = http.getAsJsonObject("request")
-                            if (request.has("ip")) {
-                                summary.country = request.get("ip").asString
+                    if(jsonObject != null) {
+                        if (jsonObject.has("http")) {
+                            val http = jsonObject.getAsJsonObject("http")
+                            if (http.has("request")) {
+                                val request = http.getAsJsonObject("request")
+                                if (request.has("ip")) {
+                                    summary.country = request.get("ip").asString
+                                }
+                                if (request.has("country")) {
+                                    summary.ip = request.get("country").asString
+                                }
                             }
-                            if (request.has("country")) {
-                                summary.ip = request.get("country").asString
+                        } else {
+                            if (jsonObject.has("http.request.ip")) {
+                                summary.ip = jsonObject.get("http.request.ip").asString
+                            }
+                            if (jsonObject.has("http.request.country")) {
+                                summary.country = jsonObject.get("http.request.country").asString
                             }
                         }
-                    } else {
-                        if (jsonObject.has("http.request.ip")) {
-                            summary.ip = jsonObject.get("http.request.ip").asString
-                        }
-                        if (jsonObject.has("http.request.country")) {
-                            summary.country = jsonObject.get("http.request.country").asString
-                        }
-                    }
-                    if (jsonObject.has("user")) {
-                        val user = jsonObject.getAsJsonObject("user")
-                        if (user.has("id")) {
-                            summary.userId = user.get("id").asString
-                        }
-                        if (user.has("email")) {
-                            summary.email = user.get("email").asString
-                        }
-                    } else {
-                        if (jsonObject.has("user.id")) {
-                            summary.userId = jsonObject.get("user.id").asString
-                        }
-                        if (jsonObject.has("user.email")) {
-                            summary.email = jsonObject.get("user.email").asString
+                        if (jsonObject.has("user")) {
+                            val user = jsonObject.getAsJsonObject("user")
+                            if (user.has("id")) {
+                                summary.userId = user.get("id").asString
+                            }
+                            if (user.has("email")) {
+                                summary.email = user.get("email").asString
+                            }
+                        } else {
+                            if (jsonObject.has("user.id")) {
+                                summary.userId = jsonObject.get("user.id").asString
+                            }
+                            if (jsonObject.has("user.email")) {
+                                summary.email = jsonObject.get("user.email").asString
+                            }
                         }
                     }
                     gson.toJson(summary, traceSummaryType).toByteArray()
