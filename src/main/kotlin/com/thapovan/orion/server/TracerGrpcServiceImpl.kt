@@ -20,7 +20,6 @@ import com.thapovan.orion.proto.*
 import io.grpc.stub.StreamObserver
 import org.apache.logging.log4j.LogManager
 import com.thapovan.orion.util.*
-import java.util.stream.Collector
 
 internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
 
@@ -28,7 +27,7 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
 
     override fun uploadSpan(request: UnaryRequest?, responseObserver: StreamObserver<ServerResponse>?) {
         try {
-            var response: ServerResponse? = null;
+            var response: ServerResponse? = null
             var spanValidationMsg = validateSpanMessage(request?.spanData)
             if(spanValidationMsg.isNullOrEmpty()){
                 KafkaProducer.pushSpanEvent(request?.spanData!!)
@@ -57,22 +56,17 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
     override fun uploadSpanBulk(request: BulkRequest?, responseObserver: StreamObserver<ServerResponse>?) {
         var spans = request?.spanDataList
 
-     //   val validSpans: List<Span>? = spans?.stream()?.filter{ span -> validateSpanMessage(span).isNullOrEmpty()}?
+        var response: ServerResponse? = null
 
-
-
-
-        spans?.forEach {
-            KafkaProducer.pushSpanEvent(it)
+        val validationMsg = validateBulkSpans(spans)
+          response = ServerResponse.newBuilder()
+                .setSuccess(validationMsg.isNullOrEmpty())
+                .setMessage(validationMsg)
+                .setCode("")
+                .build()
+            responseObserver?.onNext(response)
+            responseObserver?.onCompleted()
         }
-        val response = ServerResponse.newBuilder()
-            .setSuccess(true)
-            .setMessage("")
-            .setCode("")
-            .build()
-        responseObserver?.onNext(response)
-        responseObserver?.onCompleted()
-    }
 
     override fun uploadSpanStream(responseObserver: StreamObserver<ServerResponse>?): StreamObserver<StreamRequest> {
         return super.uploadSpanStream(responseObserver)

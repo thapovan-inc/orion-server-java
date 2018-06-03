@@ -1,6 +1,7 @@
 package com.thapovan.orion.util
 
 import com.thapovan.orion.proto.Span
+import com.thapovan.orion.proto.StartEvent
 import com.thapovan.orion.proto.Trace
 import org.junit.jupiter.api.Test
 
@@ -52,9 +53,25 @@ internal class SpanValidatorKtTest {
     }
 
     @Test
-    fun validateList(){
-        val result = listOf(1, 2, 3, 4, 5)
-                .filter { n -> n < 10 }
-        println("result: "+result)
+    fun validateBulkSpanInputs(){
+        var spanBuilder = Span.newBuilder()
+        var spanBuilder1 = Span.newBuilder()
+        spanBuilder.setServiceName("Testing").setTraceContext(Trace.newBuilder().setTraceId(UUID.randomUUID().toString()))
+                .setSpanId(UUID.randomUUID().toString())
+                .setParentSpanId(UUID.randomUUID().toString())
+
+        spanBuilder1.setTraceContext(Trace.newBuilder().setTraceId(UUID.randomUUID().toString()))
+                .setSpanId(UUID.randomUUID().toString()).setStartEvent(StartEvent.getDefaultInstance())
+                .setParentSpanId(UUID.randomUUID().toString())
+
+        val spans: MutableList<Span> = mutableListOf<Span>()
+
+        spans.add(spanBuilder.build())
+        spans.add(spanBuilder1.build())
+
+
+        var validationMsg = validateBulkSpans(spans)
+        assertEquals( true,true)
+
     }
 }
