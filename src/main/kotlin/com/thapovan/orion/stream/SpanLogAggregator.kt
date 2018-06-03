@@ -69,7 +69,7 @@ object SpanLogAggregator {
                     it.hasEndEvent() -> {
                         eventID = it.endEvent.eventId
                         message = "Span Ended"
-                        logLevel = "END"
+                        logLevel = "STOP"
                         metadata = it.endEvent.jsonString
                     }
                     else -> {
