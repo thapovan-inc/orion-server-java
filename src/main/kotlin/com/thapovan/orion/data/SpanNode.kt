@@ -23,6 +23,7 @@ class SpanNode (@Expose(serialize = true, deserialize = true) val spanId: String
                 @Expose(serialize = true, deserialize = true) var serviceName: String? = null,
                 @Expose(serialize = true, deserialize = true) var parentId: String? = null,
                 @Expose(serialize = true, deserialize = true) var startTime: Long = 0,
+                @Expose(serialize = true, deserialize = true) var endTime: Long = 0,
                 @Expose(serialize = true, deserialize = true) val children: MutableList<SpanNode> = ArrayList()) : Comparable<SpanNode> {
 
     override fun compareTo(other: SpanNode): Int {
