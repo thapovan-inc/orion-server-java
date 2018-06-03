@@ -38,9 +38,8 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
                         .setMessage("")
                         .setCode("")
                         .build()
-                responseObserver?.onNext(response)
-                responseObserver?.onCompleted()
-            }else{
+
+            } else {
                  response = ServerResponse.newBuilder()
                         .setSuccess(false)
                         .setMessage(spanValidationMsg)
@@ -48,7 +47,6 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
                         .build()
 
             }
-
             responseObserver?.onNext(response)
             responseObserver?.onCompleted()
         } catch (e: Throwable) {
