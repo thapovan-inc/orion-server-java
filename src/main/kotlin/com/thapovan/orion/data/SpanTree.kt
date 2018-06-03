@@ -55,6 +55,7 @@ class SpanTree {
         var ERROR = 0
         var CRITICAL = 0
         var ANOMALY = 0
+        anomalySpans.clear()
         spanMap.values.forEach {
             val spanSummary = it.logSummary
             spanSummary.entries.forEach {
@@ -70,7 +71,7 @@ class SpanTree {
                     "CRITICAL" -> CRITICAL += value
                 }
             }
-            if(it.startTime == 0L || it.endTime == 0L) {
+            if(it.spanId != "ROOT" && it.startTime == 0L || it.endTime == 0L) {
                 ANOMALY++
                 anomalySpans.add(it.spanId)
             }
