@@ -1,7 +1,5 @@
 package com.thapovan.orion;
 
-import com.thapovan.kafka.KafkaESFootPrintConsumer;
-import com.thapovan.kafka.KafkaESSummaryConsumer;
 import com.thapovan.orion.server.TracerGrpcServer;
 import com.thapovan.orion.server.TracerHttpServer;
 import com.thapovan.orion.stream.KafkaStream;
@@ -12,8 +10,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class Main {
     private static Logger LOG = LogManager.getLogger(Main.class);
@@ -40,14 +36,6 @@ public class Main {
             stream.start(kafkaStreamProperties);
 
             server.blockUntilShutdown();
-
-            ExecutorService executorService = Executors.newFixedThreadPool(2);
-
-            executorService.execute(new KafkaESSummaryConsumer());
-
-            executorService.execute(new KafkaESFootPrintConsumer());
-
-            executorService.shutdown();
         } catch (IOException e) {
             LOG.error("IOException occured",e);
         } catch (InterruptedException e) {
