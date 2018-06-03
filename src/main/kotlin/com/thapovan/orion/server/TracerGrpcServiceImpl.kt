@@ -19,6 +19,7 @@ package com.thapovan.orion.server
 import com.thapovan.orion.proto.*
 import io.grpc.stub.StreamObserver
 import org.apache.logging.log4j.LogManager
+import com.thapovan.orion.util.*
 
 internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
 
@@ -26,13 +27,27 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
 
     override fun uploadSpan(request: UnaryRequest?, responseObserver: StreamObserver<ServerResponse>?) {
         try {
-            KafkaProducer.pushSpanEvent(request?.spanData!!)
-            LOG.info("Published request to kafka")
-            val response = ServerResponse.newBuilder()
-                .setSuccess(true)
-                .setMessage("")
-                .setCode("")
-                .build()
+            var response: ServerResponse? = null;
+            var spanValidationMsg = validateSpanMessage(request?.spanData)
+            if(spanValidationMsg.isNullOrEmpty()){
+                KafkaProducer.pushSpanEvent(request?.spanData!!)
+                LOG.info("Published request to kafka")
+                 response = ServerResponse.newBuilder()
+                        .setSuccess(true)
+                        .setMessage("")
+                        .setCode("")
+                        .build()
+                responseObserver?.onNext(response)
+                responseObserver?.onCompleted()
+            }else{
+                 response = ServerResponse.newBuilder()
+                        .setSuccess(false)
+                        .setMessage(spanValidationMsg)
+                        .setCode("")
+                        .build()
+
+            }
+
             responseObserver?.onNext(response)
             responseObserver?.onCompleted()
         } catch (e: Throwable) {
