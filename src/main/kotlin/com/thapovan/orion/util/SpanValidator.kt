@@ -34,7 +34,7 @@ fun validateSpanMessage(span: Span?): String? {
         errorMessage="parent span id format is invalid"
     }else if(!isHostClientTimeDiffExceeds(span.timestamp)){
         errorMessage="please verify system time"
-    }else if(span.serviceName.isNullOrBlank()){
+    }else if(span.eventCase == Span.EventCase.START_EVENT && span.serviceName.isNullOrBlank()){
         errorMessage="service name is invalid"
     }
     return errorMessage

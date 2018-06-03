@@ -59,10 +59,12 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
     override fun uploadSpanBulk(request: BulkRequest?, responseObserver: StreamObserver<ServerResponse>?) {
         var spans = request?.spanDataList
 
-        var validSpans = spans?.stream()?.filter{ span -> validateSpanMessage(span).isNullOrBlank()}
+     //   val validSpans: List<Span>? = spans?.stream()?.filter{ span -> validateSpanMessage(span).isNullOrEmpty()}?
 
 
-        request?.spanDataList?.forEach {
+
+
+        spans?.forEach {
             KafkaProducer.pushSpanEvent(it)
         }
         val response = ServerResponse.newBuilder()
