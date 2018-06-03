@@ -30,7 +30,7 @@ public class KafkaESSummaryConsumer implements Runnable
 
     private static final String TOPIC_NAME = "trace-summary-json";
 
-    private static final String ES_HOST = "localhost";
+    private static final String ES_HOST = "search.local";
 
     private static final int ES_PORT = 9300;
 
@@ -41,6 +41,8 @@ public class KafkaESSummaryConsumer implements Runnable
 
     public KafkaESSummaryConsumer()
     {
+        LOG.info("Kafka summary consumer started");
+
         Properties props = new Properties();
 
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "kafka:29092");
@@ -55,12 +57,16 @@ public class KafkaESSummaryConsumer implements Runnable
 
         consumer = new KafkaConsumer(props);
 
+        LOG.info("consumer listening to kafka:29092");
+
         //es search
 
         try
         {
             client = new PreBuiltTransportClient(Settings.EMPTY)
                     .addTransportAddress(new TransportAddress(InetAddress.getByName(ES_HOST), ES_PORT));
+
+            LOG.info("es search client connected and {}:{}", ES_HOST, ES_PORT);
         }
         catch (UnknownHostException e)
         {
@@ -74,12 +80,16 @@ public class KafkaESSummaryConsumer implements Runnable
     {
         try
         {
+            LOG.info("subscribing to topic: " + TOPIC_NAME);
+
             consumer.subscribe(Arrays.asList(TOPIC_NAME));
 
             while (true)
             {
                 try
                 {
+                    int tmpCounter = 0;
+
                     ConsumerRecords<String, String> records = consumer.poll(100);
 
                     BulkRequestBuilder bulkRequest = client.prepareBulk();
@@ -94,6 +104,15 @@ public class KafkaESSummaryConsumer implements Runnable
 
                         bulkRequest.add(client.prepareIndex("summaries", "su", key)
                                 .setSource(value, XContentType.JSON)).get();
+
+                        tmpCounter++;
+                    }
+
+                    LOG.info("tmpCounter: " + tmpCounter);
+
+                    if (tmpCounter == 0)
+                    {
+                        LOG.info("Consumer poll returns empty");
                     }
 
                     consumer.commitAsync();
