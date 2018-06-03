@@ -59,6 +59,11 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
         var response: ServerResponse? = null
 
         val validationMsg = validateBulkSpans(spans)
+        if(validationMsg.isNullOrEmpty()){
+            spans?.forEach {
+               KafkaProducer.pushSpanEvent(it)
+            }
+        }
           response = ServerResponse.newBuilder()
                 .setSuccess(validationMsg.isNullOrEmpty())
                 .setMessage(validationMsg)

@@ -54,7 +54,7 @@ fun validateBulkSpans(spans: MutableList<Span>?): String?{
                         it.spanId,
                         validationMsg
                 )
-                return validationMsg
+                return@validateBulkSpans validationMsg
             }
         }
     return null
