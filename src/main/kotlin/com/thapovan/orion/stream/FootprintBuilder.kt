@@ -21,8 +21,13 @@ class FootprintBuilder {
 
         private var LOG = LogManager.getLogger(FootprintBuilder::class.java)
 
-        fun buildGraph(streamsBuilder: StreamsBuilder, incomingRequestStream: KStream<String, ByteArray>) {
+        fun buildGraph(
+            streamsBuilder: StreamsBuilder,
+            incomingRequestStream: KStream<String, ByteArray>,
+            spanStartStop: KStream<String, SpanNode>
+        ) {
             val aggTypeToken = object : TypeToken<SpanTree>() {}.type
+            val spanNodeTypeToken = object : TypeToken<SpanNode>() {}.type
             val gson = GsonBuilder()
                 .excludeFieldsWithoutExposeAnnotation()
                 .serializeNulls()
@@ -33,9 +38,9 @@ class FootprintBuilder {
                     val span = Span.parseFrom(bufBytes)
                     LOG.info("JSON span: {}", JsonFormat.printer().preservingProtoFieldNames().print(span))
                 }
-            val footPrintStream = incomingRequest
-                .filter { key, value ->
-                    key != null && value != null && value.size > 2
+            val footPrintStream = spanStartStop
+                .mapValues {
+                    gson.toJson(it,spanNodeTypeToken).toByteArray()
                 }
                 .groupBy { key, value ->
                     key.split("_")[0]
@@ -45,17 +50,11 @@ class FootprintBuilder {
                     {
                         gson.toJson(SpanTree(SpanNode("ROOT", null, null)), aggTypeToken).toByteArray()
                     },
-                    { key, value, bValueAggregate ->
+                    { key, spanNodeBytes, bValueAggregate ->
                         val footPrintTree =
                             gson.fromJson<SpanTree>(String(bValueAggregate), aggTypeToken)
+                        val spanNode = gson.fromJson<SpanNode>(String(spanNodeBytes),spanNodeTypeToken)
                         val tree = footPrintTree.rootNode
-                        val span = Span.parseFrom(value)
-                        val spanNode = SpanNode(
-                            span.spanId,
-                            if (span.serviceName.isNullOrEmpty()) null else span.serviceName,
-                            if (span.parentSpanId.isNullOrEmpty()) null else span.parentSpanId,
-                            span.timestamp
-                        )
                         val existingSpanNode: SpanNode? = tree.getIfExists(spanNode)
                         if (existingSpanNode != null) { // -> denotes that we have seen this span already
 
@@ -66,12 +65,11 @@ class FootprintBuilder {
                                         spanNode.serviceName
                                     else
                                         existingSpanNode.serviceName
-                            if (existingSpanNode.startTime == 0L || spanNode < existingSpanNode) {
-                                existingSpanNode.startTime = span.timestamp
-                            } else {
-                                if(span.hasEndEvent()) {
-                                    existingSpanNode.endTime = span.timestamp
-                                }
+                            if (existingSpanNode.startTime == 0L && spanNode.startTime != 0L) {
+                                existingSpanNode.startTime = spanNode.startTime
+                            }
+                            if (existingSpanNode.endTime == 0L && spanNode.endTime != 0L){
+                                existingSpanNode.endTime = spanNode.endTime
                             }
 
                             if ((existingSpanNode.parentId.isNullOrEmpty() // -> means that the parent was not defined so far.. so this node resides at the top of the tree
@@ -111,7 +109,7 @@ class FootprintBuilder {
                                 } else {
                                     val newParentSpan = SpanNode(spanNode.parentId!!)
                                     newParentSpan.addChild(spanNode)
-                                    tree.addChild(spanNode)
+                                    tree.addChild(newParentSpan)
                                     footPrintTree.registerSpan(newParentSpan)
                                     footPrintTree.registerSpan(spanNode)
                                 }

@@ -2,6 +2,7 @@ package com.thapovan.orion.stream
 
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
+import com.thapovan.orion.data.LogObject
 import com.thapovan.orion.data.MetaDataObject
 import com.thapovan.orion.data.SpanNode
 import com.thapovan.orion.proto.Span
@@ -31,6 +32,7 @@ class KafkaStream {
         val gson = GsonBuilder().excludeFieldsWithoutExposeAnnotation().create()
         val spanNodeType = object : TypeToken<SpanNode>() {}.type
         val metadataObjectType = object : TypeToken<MetaDataObject>() {}.type
+        val logObjectArrayType = object : TypeToken<MutableList<LogObject>>() {}.type
 
         val incomingRequestStream = streamBuilder.stream<String,ByteArray>("incoming-request")
 
@@ -44,9 +46,9 @@ class KafkaStream {
             }
 
         SpanLifecycleProcessor.buildGraph(streamBuilder,protoSpanStartStopEventStream)
-        FootprintBuilder.buildGraph(streamBuilder,incomingRequestStream)
 
-        val spanStartStop = streamBuilder.stream<String,ByteArray>("span-start-stop")
+        val spanStartStopRaw = streamBuilder.stream<String,ByteArray>("span-start-stop")
+        val spanStartStop = spanStartStopRaw
             .mapValues {
                 gson.fromJson<SpanNode>(String(it),spanNodeType)
             }
@@ -61,7 +63,16 @@ class KafkaStream {
                 gson.fromJson<MetaDataObject>(String(it),metadataObjectType)
             }
 
+        val spanLogAggregateStream = streamBuilder.stream<String,ByteArray>("span-log-aggregated")
+//            .mapValues {
+//                gson.fromJson<MutableList<LogObject>>(String(it),logObjectArrayType)
+//            }
+
+        SpanLogAggregator.buildGraph(streamBuilder,protoSpanStartStopEventStream, protoLogEventStream)
         TraceSummaryBuilder.buildGraph(streamBuilder,spanStartStop,metaDataObject)
+        FootprintBuilder.buildGraph(streamBuilder,incomingRequestStream,spanStartStop)
+
+        FatTraceObject.buildGraph(streamBuilder,spanLogAggregateStream,spanStartStopRaw)
 
         kafkaStream = KafkaStreams(streamBuilder.build(),streamConfig)
         kafkaStream?.cleanUp()
