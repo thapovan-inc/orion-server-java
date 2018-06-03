@@ -50,4 +50,13 @@ internal class SpanValidatorKtTest {
                 .setParentSpanId(UUID.randomUUID().toString());
         assertEquals(validateSpanMessage(spanBuilder.build()),"span_id format is invalid")
     }
+
+    @Test
+    fun validateList(){
+        val result = listOf(1, 2, 3, 4, 5)
+                .map { n -> n * n }
+                .filter { n -> n < 10 }
+                .first()
+        println("result: "+result)
+    }
 }

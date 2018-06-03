@@ -20,6 +20,7 @@ import com.thapovan.orion.proto.*
 import io.grpc.stub.StreamObserver
 import org.apache.logging.log4j.LogManager
 import com.thapovan.orion.util.*
+import java.util.stream.Collector
 
 internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
 
@@ -56,6 +57,11 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
     }
 
     override fun uploadSpanBulk(request: BulkRequest?, responseObserver: StreamObserver<ServerResponse>?) {
+        var spans = request?.spanDataList
+
+        var validSpans = spans?.stream()?.filter{ span -> validateSpanMessage(span).isNullOrBlank()}
+
+
         request?.spanDataList?.forEach {
             KafkaProducer.pushSpanEvent(it)
         }
