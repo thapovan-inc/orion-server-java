@@ -20,18 +20,19 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.thapovan.orion.data.MetaDataObject
-import com.thapovan.orion.data.SpanNode
+import com.thapovan.orion.data.SpanTree
 import com.thapovan.orion.data.TraceSummary
 import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.JoinWindows
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.TimeWindows
+import kotlin.math.max
 
 object TraceSummaryBuilder {
     fun buildGraph(
         streamsBuilder: StreamsBuilder,
-        spanStartStopStream: KStream<String, SpanNode>,
+        fatTraceObjectStream: KStream<String, ByteArray>,
         metaDataObject: KStream<String, MetaDataObject>
     ) {
         val gson = GsonBuilder()
@@ -41,22 +42,32 @@ object TraceSummaryBuilder {
 
         val metadataType = object : TypeToken<MetaDataObject>() {}.type
         val traceSummaryType = object : TypeToken<TraceSummary>() {}.type
+        val spanTreeType = object : TypeToken<SpanTree>() {}.type
 
         val metadataTraceStream = metaDataObject.selectKey { key, _ ->
             key.split("_")[0]
         }
-        val traceSummaryTable = spanStartStopStream
-            .selectKey { key, value -> key.split("_")[0] }
-            .mapValues { value ->
-                TraceSummary(
-                    "", value.startTime, value.endTime, serviceNames = MutableList<String>(1,
-                        { _ ->
-                            value.serviceName ?: ""
-                        })
-                )
-            }
-            .mapValues {
-                gson.toJson(it).toByteArray()
+        val traceSummaryTable = fatTraceObjectStream
+            .map { key,value ->
+                val spanTree = gson.fromJson<SpanTree>(String(value),spanTreeType)
+                val servicesList: MutableList<String> = ArrayList()
+                spanTree.spanMap.forEach { t, u ->
+                    if("ROOT" != u.spanId && u.serviceName != null)
+                        servicesList.add(u.serviceName ?: "")
+                }
+                var startTime = 0L
+                var endTime = 0L
+                if(spanTree.rootNode.children.size>0) {
+                    startTime = spanTree.rootNode.children.first().startTime
+                    endTime = spanTree.rootNode.children.last().endTime
+                }
+                val traceId = key
+                val traceSummary = TraceSummary(traceId,
+                    startTime,
+                    endTime,
+                    serviceNames = servicesList,
+                    traceEventSummary = spanTree.traceEventSummary?: HashMap())
+                KeyValue.pair(key,gson.toJson(traceSummary,traceSummaryType).toByteArray())
             }
 
         val summaryStream = metadataTraceStream
@@ -160,10 +171,15 @@ object TraceSummaryBuilder {
                     val servicesSet = HashSet<String>()
                     servicesSet.addAll(intermediateSummary.serviceNames)
                     servicesSet.addAll(summary.serviceNames)
+                    val traceSummary: MutableMap<String,Int> = HashMap()
+                    summary.traceEventSummary.forEach { t, u ->
+                        val iU = intermediateSummary.traceEventSummary[t] ?: 0
+                        traceSummary[t] = max(iU,u)
+                    }
                     val services = servicesSet.toMutableList()
                     val country = if (summary.country.isNullOrBlank()) intermediateSummary.country else summary.country
                     val ip = if (summary.ip.isNullOrBlank()) intermediateSummary.ip else summary.ip
-                    val finalSummary = TraceSummary(traceId, startTime, endTime, email, userId, services, country, ip)
+                    val finalSummary = TraceSummary(traceId, startTime, endTime, email, userId, services, traceSummary, country, ip)
                     gson.toJson(finalSummary, traceSummaryType).toByteArray()
                 })
             .toStream()

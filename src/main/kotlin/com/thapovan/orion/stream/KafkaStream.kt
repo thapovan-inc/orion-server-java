@@ -69,10 +69,13 @@ class KafkaStream {
 //            }
 
         SpanLogAggregator.buildGraph(streamBuilder,protoSpanStartStopEventStream, protoLogEventStream)
-        TraceSummaryBuilder.buildGraph(streamBuilder,spanStartStop,metaDataObject)
         FootprintBuilder.buildGraph(streamBuilder,incomingRequestStream,spanStartStop)
 
         FatTraceObject.buildGraph(streamBuilder,spanLogAggregateStream,spanStartStopRaw)
+
+        val fatTraceObjectStream = streamBuilder.stream<String,ByteArray>("fat-trace-object")
+
+        TraceSummaryBuilder.buildGraph(streamBuilder,fatTraceObjectStream,metaDataObject)
 
         kafkaStream = KafkaStreams(streamBuilder.build(),streamConfig)
         kafkaStream?.cleanUp()

@@ -21,10 +21,10 @@ import com.google.gson.annotations.Expose
 class SpanTree {
 
     @Expose(serialize = true, deserialize = true)
-    private val spanMap = HashMap<String, SpanNode>()
+    val spanMap = HashMap<String, SpanNode>()
 
     @Expose(serialize = true, deserialize = true)
-    private val traceEventSummary = HashMap<String,Int>()
+    val traceEventSummary = HashMap<String,Int>()
 
     @Expose(serialize = true, deserialize = true)
     private val anomalySpans = ArrayList<String>()

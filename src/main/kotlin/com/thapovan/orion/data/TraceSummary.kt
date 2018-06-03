@@ -25,5 +25,6 @@ data class TraceSummary(
     @Expose(serialize = true, deserialize = true)var email: String? = null,
     @Expose(serialize = true, deserialize = true)var userId: String? = null,
     @Expose(serialize = true, deserialize = true)var serviceNames: MutableList<String> = ArrayList<String>(),
+    @Expose(serialize = true, deserialize = true)var traceEventSummary: MutableMap<String,Int> = HashMap(),
     @Expose(serialize = true, deserialize = true)var country: String? = null,
     @Expose(serialize = true, deserialize = true)var ip: String? = null)
