@@ -71,7 +71,7 @@ class SpanTree {
                     "CRITICAL" -> CRITICAL += value
                 }
             }
-            if(it.spanId != "ROOT" && it.startTime == 0L || it.endTime == 0L) {
+            if(!it.spanId.equals("ROOT") && (it.startTime == 0L || it.endTime == 0L)) {
                 ANOMALY++
                 anomalySpans.add(it.spanId)
             }

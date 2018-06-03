@@ -127,9 +127,9 @@ class FootprintBuilder {
                 .selectKey { key, value ->  key.key()}
 
             footPrintStream.to("trace-footprint")
-            footPrintStream.foreach({ _, byteValue ->
-                println(String(byteValue))
-            })
+//            footPrintStream.foreach({ _, byteValue ->
+//                println(String(byteValue))
+//            })
         }
 
     }
