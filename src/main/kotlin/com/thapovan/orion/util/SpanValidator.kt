@@ -17,8 +17,11 @@
 package com.thapovan.orion.util
 
 import com.thapovan.orion.proto.Span
+import org.apache.logging.log4j.LogManager
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+
+private val LOG = LogManager.getLogger("SpanValidator")
 
 fun validateSpanMessage(span: Span?): String? {
     var errorMessage: String? = null
@@ -34,10 +37,27 @@ fun validateSpanMessage(span: Span?): String? {
         errorMessage="parent span id format is invalid"
     }else if(!isHostClientTimeDiffExceeds(span.timestamp)){
         errorMessage="please verify system time"
-    }else if(span.serviceName.isNullOrBlank()){
+    }else if(span.eventCase == Span.EventCase.START_EVENT && span.serviceName.isNullOrBlank()){
         errorMessage="service name is invalid"
     }
     return errorMessage
+}
+
+fun validateBulkSpans(spans: MutableList<Span>?): String?{
+        var validationMsg: String? =null
+
+        spans?.forEach {
+            validationMsg = validateSpanMessage(it)
+            if (!validationMsg.isNullOrEmpty()) {
+                validationMsg = String.format(
+                        "span_id %s is not valid, message: %s",
+                        it.spanId,
+                        validationMsg
+                )
+                return@validateBulkSpans validationMsg
+            }
+        }
+    return null
 }
 
 fun isHostClientTimeDiffExceeds(timestamp: Long): Boolean{
@@ -45,17 +65,17 @@ fun isHostClientTimeDiffExceeds(timestamp: Long): Boolean{
 
     var thresholdTime = 5*60*1000;
     var currentTime = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli()
-    println("currentTime: "+currentTime)
-    println("timestamp: "+timestamp)
+    LOG.debug("currentTime: "+currentTime)
+    LOG.debug("timestamp: "+timestamp)
     val timeDiff = Math.abs(timestamp - currentTime)
-    println("timeDiff: "+timeDiff)
+    LOG.debug("timeDiff: "+timeDiff)
     return timeDiff > thresholdTime
 
 }
 
 fun checkUUID(UUID: String): Boolean{
     var isUUID: Boolean =false;
-
+    LOG.debug("UUID: "+UUID)
     val regex ="^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$".toRegex();
     return regex.containsMatchIn(UUID)
 }
