@@ -6,12 +6,23 @@ import org.junit.jupiter.api.Test
 
 import org.junit.jupiter.api.Assertions.*
 import java.util.*
+import java.util.TimeZone
+import java.text.SimpleDateFormat
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+
 
 internal class SpanValidatorKtTest {
 
     @Test
     fun isTimeDiffMore() {
-       val timeDiffMore = isHostClientTimeDiffExceeds(1527979906025000)
+
+        var currentTime = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli()
+        var fiveMinsAfter = (currentTime + 5*60*1000) + 5
+        var fiveMinsBefore = (currentTime - 5*60*1000) - 1
+        val timeDiffMore = isHostClientTimeDiffExceeds(currentTime*1000)
+        assertEquals(isHostClientTimeDiffExceeds(fiveMinsAfter*1000),true)
+        assertEquals(isHostClientTimeDiffExceeds(fiveMinsBefore*1000),true)
         assertEquals(timeDiffMore,false)
     }
 

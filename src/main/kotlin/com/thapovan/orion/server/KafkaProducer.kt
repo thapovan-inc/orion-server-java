@@ -68,6 +68,7 @@ object KafkaProducer {
         }
         val normSpandId = span.spanId.toLowerCase()
         val normTraceId = span.traceContext.traceId.toLowerCase()
+        val normParentSpanId = span.parentSpanId?.toLowerCase()
 
         //new objects
         val newSpanBuilder = span.toBuilder()
@@ -76,7 +77,7 @@ object KafkaProducer {
         val newTrace = newTraceContextBuilder.build()
 
 
-        newSpanBuilder.setSpanId(normSpandId).setTraceContext(newTrace)
+        newSpanBuilder.setSpanId(normSpandId).setParentSpanId(normParentSpanId).setTraceContext(newTrace)
         val newSpan = newSpanBuilder.build()
 
         val key = "${newTrace.traceId}_${newSpan.spanId}_$eventID"
