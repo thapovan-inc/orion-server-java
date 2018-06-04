@@ -36,7 +36,7 @@ internal class SpanValidatorKtTest {
     fun validateEmptyServiceSpan(){
         var spanBuilder = Span.newBuilder()
 
-        spanBuilder.setServiceName("").setTraceContext(Trace.newBuilder().setTraceId(UUID.randomUUID().toString()))
+        spanBuilder.setServiceName("Testing").setTraceContext(Trace.newBuilder().setTraceId(UUID.randomUUID().toString()))
                 .setSpanId(UUID.randomUUID().toString())
                 .setParentSpanId(UUID.randomUUID().toString());
         assertEquals(validateSpanMessage(spanBuilder.build()),"service name is invalid")
