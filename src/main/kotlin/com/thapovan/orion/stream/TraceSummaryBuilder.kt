@@ -136,6 +136,25 @@ object TraceSummaryBuilder {
                                     summary.email = jsonObject.get("user.email").asString
                                 }
                             }
+
+                            if (jsonObject.has("orion.signal")) {
+                                val orion = jsonObject.get("orion.signal").asString
+                                when (orion) {
+                                    "START_TRACE" -> summary.start_trace_count++
+                                    "END_TRACE" -> summary.end_trace_count++
+                                }
+                            } else {
+                                if (jsonObject.has("orion") && jsonObject.getAsJsonPrimitive("orion").isJsonObject) {
+                                    val orion = jsonObject.getAsJsonObject("orion")
+                                    if (orion.has("signal") && jsonObject.getAsJsonPrimitive("signal").isString) {
+                                        val signal = orion.get("signal").asString
+                                        when (signal) {
+                                            "START_TRACE" -> summary.start_trace_count++
+                                            "END_TRACE" -> summary.end_trace_count++
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }catch (t: Throwable) {
 
@@ -179,7 +198,13 @@ object TraceSummaryBuilder {
                     val services = servicesSet.toMutableList()
                     val country = if (summary.country.isNullOrBlank()) intermediateSummary.country else summary.country
                     val ip = if (summary.ip.isNullOrBlank()) intermediateSummary.ip else summary.ip
-                    val finalSummary = TraceSummary(traceId, startTime, endTime, email, userId, services, traceSummary, country, ip)
+                    val startTraceCount = summary.start_trace_count+intermediateSummary.start_trace_count
+                    val endTraceCount = summary.end_trace_count+intermediateSummary.end_trace_count
+                    var traceIncomplete = false
+                    if (startTraceCount == 0 || endTraceCount == 0 || startTraceCount != endTraceCount) {
+                        traceIncomplete = true
+                    }
+                    val finalSummary = TraceSummary(traceId, startTime, endTime, email, userId, services, traceSummary, country, ip, traceIncomplete = traceIncomplete)
                     gson.toJson(finalSummary, traceSummaryType).toByteArray()
                 })
             .toStream()
