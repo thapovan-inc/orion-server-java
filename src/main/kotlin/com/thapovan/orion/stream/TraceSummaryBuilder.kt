@@ -28,6 +28,7 @@ import org.apache.kafka.streams.kstream.JoinWindows
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.TimeWindows
 import kotlin.math.max
+import kotlin.math.min
 
 object TraceSummaryBuilder {
     fun buildGraph(
@@ -207,7 +208,11 @@ object TraceSummaryBuilder {
                     val traceSummary: MutableMap<String,Int> = HashMap()
                     summary.traceEventSummary.forEach { t, u ->
                         val iU = intermediateSummary.traceEventSummary[t] ?: -1
-                        traceSummary[t] = max(iU,u)
+                        if (t == "ANOMALY" && iU != -1) {
+                            traceSummary[t] = min(iU,u)
+                        } else {
+                            traceSummary[t] = max(iU,u)
+                        }
                     }
                     val services = servicesSet.toMutableList()
                     val country = if (summary.country.isNullOrBlank()) intermediateSummary.country else summary.country
