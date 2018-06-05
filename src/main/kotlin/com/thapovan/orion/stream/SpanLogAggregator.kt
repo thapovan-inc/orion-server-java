@@ -99,7 +99,7 @@ object SpanLogAggregator {
                 return@selectKey "${parts[0]}_${parts[1]}"
             }
 
-        val spanLogArrayStream = logObjectStream
+        val logArrStream = logObjectStream
             .groupByKey()
             .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS))
             .aggregate(
@@ -124,9 +124,10 @@ object SpanLogAggregator {
             )
             .toStream()
             .selectKey { key, _ -> key.key() }
-            .join(
-                startStopEventStream,
-                { logArrayByte: ByteArray?, logObjectByte: ByteArray? ->
+        val spanLogArrayStream = startStopEventStream
+            .leftJoin(
+                logArrStream,
+                { logObjectByte: ByteArray?, logArrayByte: ByteArray? ->
                         val logArray = if (logArrayByte == null || logArrayByte.isEmpty()) {
                             ArrayList<LogObject>()
                         } else {
