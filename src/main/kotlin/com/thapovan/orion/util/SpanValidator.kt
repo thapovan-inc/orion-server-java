@@ -20,8 +20,13 @@ import com.thapovan.orion.proto.Span
 import org.apache.logging.log4j.LogManager
 import java.time.LocalDateTime
 import java.time.ZoneOffset
+import java.util.*
 
 private val LOG = LogManager.getLogger("SpanValidator")
+
+private val utcOffset = (TimeZone.getDefault().rawOffset + TimeZone.getDefault().dstSavings)
+private val thresholdTime = 5*60*1000
+
 
 fun validateSpanMessage(span: Span?): String? {
     var errorMessage: String? = null
@@ -35,7 +40,7 @@ fun validateSpanMessage(span: Span?): String? {
         errorMessage="trace_id is not valid"
     }else if(!span.parentSpanId.isNullOrBlank() && !checkUUID(span.parentSpanId)){
         errorMessage="parent span id format is invalid"
-    }else if(!isHostClientTimeDiffExceeds(span.timestamp)){
+    }else if(isHostClientTimeDiffExceeds(span.timestamp)){
         errorMessage="please verify system time"
     }else if(span.eventCase == Span.EventCase.START_EVENT && span.serviceName.isNullOrBlank()){
         errorMessage="service name is invalid"
@@ -61,10 +66,9 @@ fun validateBulkSpans(spans: MutableList<Span>?): String?{
 }
 
 fun isHostClientTimeDiffExceeds(timestamp: Long): Boolean{
-    var timestamp = timestamp/1000;
+    var timestamp = timestamp/1000
 
-    var thresholdTime = 5*60*1000;
-    var currentTime = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli()
+    var currentTime = System.currentTimeMillis()- utcOffset
     LOG.debug("currentTime: "+currentTime)
     LOG.debug("timestamp: "+timestamp)
     val timeDiff = Math.abs(timestamp - currentTime)

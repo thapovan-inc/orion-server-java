@@ -19,7 +19,7 @@ internal class SpanValidatorKtTest {
     fun isTimeDiffMore() {
 
         var currentTime = LocalDateTime.now().toInstant(ZoneOffset.UTC).toEpochMilli()
-        var fiveMinsAfter = (currentTime + 5*60*1000) + 5
+        var fiveMinsAfter = (currentTime + 5*60*1000) + 2000
         var fiveMinsBefore = (currentTime - 5*60*1000) - 1
         val timeDiffMore = isHostClientTimeDiffExceeds(currentTime*1000)
         assertEquals(isHostClientTimeDiffExceeds(fiveMinsAfter*1000),true)
@@ -46,9 +46,9 @@ internal class SpanValidatorKtTest {
     fun validateInvalidUUIDSpan(){
         var spanBuilder = Span.newBuilder()
 
-        spanBuilder.setServiceName("Testing").setTraceContext(Trace.newBuilder().setTraceId(UUID.randomUUID().toString()))
+        spanBuilder.setServiceName("").setTraceContext(Trace.newBuilder().setTraceId(UUID.randomUUID().toString()))
                 .setSpanId("2786289672793676")
-                .setParentSpanId(UUID.randomUUID().toString());
+                .setParentSpanId("");
         assertEquals(validateSpanMessage(spanBuilder.build()),"span_id format is invalid")
     }
 
