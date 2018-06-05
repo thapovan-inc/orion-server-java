@@ -58,7 +58,9 @@ object SpanLifecycleProcessor {
                             if (span.serviceName.isNullOrEmpty()  && span.serviceName.isNullOrBlank() ) spanNode.serviceName else span.serviceName,
                             if (span.parentSpanId.isNullOrEmpty() && span.parentSpanId.isNullOrBlank()) spanNode.parentId else span.parentSpanId,
                             span.timestamp,
-                            spanNode.endTime
+                            spanNode.endTime,
+                            traceId= span.traceContext.traceId,
+                            traceName = span.traceContext.traceName
                         )
                     } else if (span.hasEndEvent()) {
                         SpanNode(
@@ -66,7 +68,9 @@ object SpanLifecycleProcessor {
                             if (span.serviceName.isNullOrEmpty()  && span.serviceName.isNullOrBlank() ) spanNode.serviceName else span.serviceName,
                             if (span.parentSpanId.isNullOrEmpty() && span.parentSpanId.isNullOrBlank()) spanNode.parentId else span.parentSpanId,
                             spanNode.startTime,
-                            span.timestamp
+                            span.timestamp,
+                            traceId= spanNode.traceId ?: span.traceContext.traceId,
+                            traceName = spanNode.traceName ?: span.traceContext.traceName
                         )
                     } else {
                         if (!span.serviceName.isNullOrEmpty() && span.serviceName.isNullOrBlank()) {
@@ -80,6 +84,12 @@ object SpanLifecycleProcessor {
                         }
                         if(spanNode.endTime == 0L || (spanNode.endTime < span.timestamp)) {
                             spanNode.endTime = span.timestamp
+                        }
+                        if(spanNode.traceId.isNullOrBlank()) {
+                            spanNode.traceId = span.traceContext.traceId
+                        }
+                        if(spanNode.traceName.isNullOrBlank()) {
+                            spanNode.traceName = span.traceContext.traceName
                         }
                         spanNode
                     }

@@ -21,6 +21,12 @@ import com.google.gson.annotations.Expose
 class SpanTree {
 
     @Expose(serialize = true, deserialize = true)
+    var traceId: String? = null
+
+    @Expose(serialize = true, deserialize = true)
+    var traceName: String? = null
+
+    @Expose(serialize = true, deserialize = true)
     val spanMap = HashMap<String, SpanNode>()
 
     @Expose(serialize = true, deserialize = true)

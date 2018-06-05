@@ -17,18 +17,21 @@
 package com.thapovan.orion.data
 
 import com.google.gson.annotations.Expose
-import java.util.*
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
-class SpanNode (@Expose(serialize = true, deserialize = true) var spanId: String,
-                @Expose(serialize = true, deserialize = true) var serviceName: String? = null,
-                @Expose(serialize = true, deserialize = true) var parentId: String? = null,
-                @Expose(serialize = true, deserialize = true) var startTime: Long = 0,
-                @Expose(serialize = true, deserialize = true) var endTime: Long = 0,
-                @Expose(serialize = true, deserialize = true) var logSummary: MutableMap<String,Int> = HashMap(),
-                @Expose(serialize = true, deserialize = true) val children: MutableList<SpanNode> = ArrayList(),
-                @Expose(serialize = true, deserialize = true) val events: MutableList<LogObject> = ArrayList()) : Comparable<SpanNode> {
+class SpanNode(
+    @Expose(serialize = true, deserialize = true) var spanId: String,
+    @Expose(serialize = true, deserialize = true) var serviceName: String? = null,
+    @Expose(serialize = true, deserialize = true) var parentId: String? = null,
+    @Expose(serialize = true, deserialize = true) var startTime: Long = 0,
+    @Expose(serialize = true, deserialize = true) var endTime: Long = 0,
+    @Expose(serialize = true, deserialize = true) var logSummary: MutableMap<String, Int> = HashMap(),
+    @Expose(serialize = true, deserialize = true) val children: MutableList<SpanNode> = ArrayList(),
+    @Expose(serialize = true, deserialize = true) val events: MutableList<LogObject> = ArrayList(),
+    @Expose(serialize = true, deserialize = true) var traceId: String? = null,
+    @Expose(serialize = true, deserialize = true) var traceName: String? = null
+) : Comparable<SpanNode> {
 
     override fun compareTo(other: SpanNode): Int {
         return startTime.compareTo(other.startTime)
@@ -41,7 +44,7 @@ class SpanNode (@Expose(serialize = true, deserialize = true) var spanId: String
         return false
     }
 
-    fun getIfExists(spanNode: SpanNode) : SpanNode? {
+    fun getIfExists(spanNode: SpanNode): SpanNode? {
         if (children.contains(spanNode)) {
             return children[children.indexOf(spanNode)]
         }
@@ -55,7 +58,7 @@ class SpanNode (@Expose(serialize = true, deserialize = true) var spanId: String
     }
 
     fun getCompactClone(): SpanNode {
-        return SpanNode(spanId,serviceName,parentId,startTime,endTime,logSummary)
+        return SpanNode(spanId, serviceName, parentId, startTime, endTime, logSummary)
     }
 
     fun addChild(spanNode: SpanNode) {

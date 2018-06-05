@@ -83,6 +83,14 @@ object FatTraceObject {
                         existingSpanNode.events.sortBy { it.eventId }
                         existingSpanNode.updateLogSummary()
 
+                        if(existingSpanNode.traceId.isNullOrBlank() && !spanNode.traceId.isNullOrBlank()) {
+                            existingSpanNode.traceId = spanNode.traceId
+                        }
+
+                        if(existingSpanNode.traceName.isNullOrBlank() && !spanNode.traceName.isNullOrBlank()) {
+                            existingSpanNode.traceName = spanNode.traceName
+                        }
+
                         // lets check if the service name exists. if not present in the existingSpan, and if present
                         // in the received span, lets update the existingSpan
                         existingSpanNode.serviceName =

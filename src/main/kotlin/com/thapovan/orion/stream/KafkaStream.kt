@@ -74,7 +74,7 @@ class KafkaStream {
 //            }
 
         SpanLogAggregator.buildGraph(streamBuilder,protoSpanStartStopEventStream, protoLogEventStream)
-        FootprintBuilder.buildGraph(streamBuilder,incomingRequestStream,spanStartStop)
+//        FootprintBuilder.buildGraph(streamBuilder,incomingRequestStream,spanStartStop)
 
         FatTraceObject.buildGraph(streamBuilder,spanLogAggregateStream,spanStartStopRaw)
 
