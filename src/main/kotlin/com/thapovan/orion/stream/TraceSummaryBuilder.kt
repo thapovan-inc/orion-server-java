@@ -82,7 +82,7 @@ object TraceSummaryBuilder {
         val summaryStream = traceSummaryTable
             .leftJoin(
                 metadata,
-                { summaryBytes: ByteArray, metadataByte: ByteArray? ->
+                { summaryBytes: ByteArray, metadataByte: ByteArray ->
                     val metadataObjectValue = if (metadataByte == null || metadataByte.size == 0) {
                         MetaDataObject("", 0, 0, "", "")
                     } else {
