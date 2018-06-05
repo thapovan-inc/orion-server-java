@@ -78,6 +78,9 @@ object KafkaProducer {
 
 
         newSpanBuilder.setSpanId(normSpandId).setParentSpanId(normParentSpanId).setTraceContext(newTrace)
+        if(newSpanBuilder.hasStartEvent()) {
+            newSpanBuilder.internalSpanRefNumber = System.nanoTime()
+        }
         val newSpan = newSpanBuilder.build()
         val key = "${normTraceId}_${normSpandId}_$eventID"
         val value:ByteArray = newSpan.toByteArray()
