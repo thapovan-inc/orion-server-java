@@ -35,7 +35,7 @@ fun validateSpanMessage(span: Span?): String? {
         errorMessage="trace_id is not valid"
     }else if(!span.parentSpanId.isNullOrBlank() && !checkUUID(span.parentSpanId)){
         errorMessage="parent span id format is invalid"
-    }else if(!isHostClientTimeDiffExceeds(span.timestamp)){
+    }else if(isHostClientTimeDiffExceeds(span.timestamp)){
         errorMessage="please verify system time"
     }else if(span.eventCase == Span.EventCase.START_EVENT && span.serviceName.isNullOrBlank()){
         errorMessage="service name is invalid"
