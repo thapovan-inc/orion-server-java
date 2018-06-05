@@ -30,4 +30,5 @@ data class TraceSummary(
     @Expose(serialize = true, deserialize = true)var ip: String? = null,
     @Expose(serialize = true, deserialize = true) var start_trace_count: Int = 0,
     @Expose(serialize = true, deserialize = true) var traceIncomplete: Boolean = false,
-    @Expose(serialize = true, deserialize = true) var end_trace_count: Int = 0)
+    @Expose(serialize = true, deserialize = true) var end_trace_count: Int = 0,
+    @Expose(serialize = true, deserialize = true)val traceName: String? = null)

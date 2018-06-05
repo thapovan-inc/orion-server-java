@@ -49,26 +49,28 @@ object TraceSummaryBuilder {
             key.split("_")[0]
         }
         val traceSummaryTable = fatTraceObjectStream
-            .map { key,value ->
-                val spanTree = gson.fromJson<SpanTree>(String(value),spanTreeType)
+            .map { key, value ->
+                val spanTree = gson.fromJson<SpanTree>(String(value), spanTreeType)
                 val servicesList: MutableList<String> = ArrayList()
                 spanTree.spanMap.forEach { t, u ->
-                    if("ROOT" != u.spanId && u.serviceName != null)
+                    if ("ROOT" != u.spanId && u.serviceName != null)
                         servicesList.add(u.serviceName ?: "")
                 }
                 var startTime = 0L
                 var endTime = 0L
-                if(spanTree.rootNode.children.size>0) {
+                if (spanTree.rootNode.children.size > 0) {
                     startTime = spanTree.rootNode.children.first().startTime
                     endTime = spanTree.rootNode.children.last().endTime
                 }
                 val traceId = key
-                val traceSummary = TraceSummary(traceId,
+                val traceSummary = TraceSummary(
+                    traceId,
                     startTime,
                     endTime,
                     serviceNames = servicesList,
-                    traceEventSummary = spanTree.traceEventSummary?: HashMap())
-                KeyValue.pair(key,gson.toJson(traceSummary,traceSummaryType).toByteArray())
+                    traceEventSummary = spanTree.traceEventSummary ?: HashMap()
+                )
+                KeyValue.pair(key, gson.toJson(traceSummary, traceSummaryType).toByteArray())
             }
 
         val summaryStream = metadataTraceStream
@@ -169,7 +171,7 @@ object TraceSummaryBuilder {
                                 }
                             }
                         }
-                    }catch (t: Throwable) {
+                    } catch (t: Throwable) {
 
                     }
                     gson.toJson(summary, traceSummaryType).toByteArray()
@@ -205,30 +207,38 @@ object TraceSummaryBuilder {
                     val servicesSet = HashSet<String>()
                     servicesSet.addAll(intermediateSummary.serviceNames)
                     servicesSet.addAll(summary.serviceNames)
-                    val traceSummary: MutableMap<String,Int> = HashMap()
+                    val traceSummary: MutableMap<String, Int> = HashMap()
                     summary.traceEventSummary.forEach { t, u ->
                         val iU = intermediateSummary.traceEventSummary[t] ?: -1
                         if (t == "ANOMALY" && iU != -1) {
-                            traceSummary[t] = min(iU,u)
+                            traceSummary[t] = min(iU, u)
                         } else {
-                            traceSummary[t] = max(iU,u)
+                            traceSummary[t] = max(iU, u)
                         }
                     }
                     val services = servicesSet.toMutableList()
                     val country = if (summary.country.isNullOrBlank()) intermediateSummary.country else summary.country
                     val ip = if (summary.ip.isNullOrBlank()) intermediateSummary.ip else summary.ip
-                    val startTraceCount = summary.start_trace_count+intermediateSummary.start_trace_count
-                    val endTraceCount = summary.end_trace_count+intermediateSummary.end_trace_count
+                    val startTraceCount = summary.start_trace_count + intermediateSummary.start_trace_count
+                    val endTraceCount = summary.end_trace_count + intermediateSummary.end_trace_count
                     var traceIncomplete = false
                     if (startTraceCount == 0 || endTraceCount == 0 || startTraceCount != endTraceCount) {
                         traceIncomplete = true
                     }
-                    val finalSummary = TraceSummary(traceId, startTime, endTime, email, userId, services, traceSummary,
+
+                    val traceName =
+                        if (intermediateSummary.traceName.isNullOrBlank() && !summary.traceName.isNullOrBlank())
+                            summary.traceName
+                        else null
+                    val finalSummary = TraceSummary(
+                        traceId, startTime, endTime, email, userId, services, traceSummary,
                         country,
                         ip,
                         traceIncomplete = traceIncomplete,
                         start_trace_count = startTraceCount,
-                        end_trace_count = endTraceCount)
+                        end_trace_count = endTraceCount,
+                        traceName = traceName
+                    )
                     gson.toJson(finalSummary, traceSummaryType).toByteArray()
                 })
             .toStream()
