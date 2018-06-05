@@ -29,10 +29,10 @@ object FatTraceObject {
             .serializeNulls()
             .create()
 
-        spanStartStop
-            .leftJoin(
-                spanLogAggregateStream,
-                { spanNodeBytes: ByteArray, spanLogArrayBytes: ByteArray ->
+        spanLogAggregateStream
+            .join(
+                spanStartStop,
+                { spanLogArrayBytes: ByteArray, spanNodeBytes: ByteArray ->
                     val spanNode = if (spanNodeBytes == null || spanNodeBytes.size == 0) {
                         SpanNode("")
                     } else {

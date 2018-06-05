@@ -71,18 +71,16 @@ object TraceSummaryBuilder {
                 KeyValue.pair(key,gson.toJson(traceSummary,traceSummaryType).toByteArray())
             }
 
-        val metadata = metadataTraceStream
+        val summaryStream = metadataTraceStream
             .selectKey { key, _ ->
                 key.split("_")[0]
             }
             .mapValues {
                 gson.toJson(it).toByteArray()
             }
-
-        val summaryStream = traceSummaryTable
-            .leftJoin(
-                metadata,
-                { summaryBytes: ByteArray, metadataByte: ByteArray ->
+            .join(
+                traceSummaryTable,
+                { metadataByte: ByteArray, summaryBytes: ByteArray ->
                     val metadataObjectValue = if (metadataByte == null || metadataByte.size == 0) {
                         MetaDataObject("", 0, 0, "", "")
                     } else {
