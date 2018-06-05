@@ -18,13 +18,17 @@ package com.thapovan.orion.data
 
 import com.google.gson.annotations.Expose
 import java.util.*
+import kotlin.collections.ArrayList
+import kotlin.collections.HashMap
 
-class SpanNode (@Expose(serialize = true, deserialize = true) val spanId: String,
+class SpanNode (@Expose(serialize = true, deserialize = true) var spanId: String,
                 @Expose(serialize = true, deserialize = true) var serviceName: String? = null,
                 @Expose(serialize = true, deserialize = true) var parentId: String? = null,
                 @Expose(serialize = true, deserialize = true) var startTime: Long = 0,
                 @Expose(serialize = true, deserialize = true) var endTime: Long = 0,
-                @Expose(serialize = true, deserialize = true) val children: MutableList<SpanNode> = ArrayList()) : Comparable<SpanNode> {
+                @Expose(serialize = true, deserialize = true) var logSummary: MutableMap<String,Int> = HashMap(),
+                @Expose(serialize = true, deserialize = true) val children: MutableList<SpanNode> = ArrayList(),
+                @Expose(serialize = true, deserialize = true) val events: MutableList<LogObject> = ArrayList()) : Comparable<SpanNode> {
 
     override fun compareTo(other: SpanNode): Int {
         return startTime.compareTo(other.startTime)
@@ -51,12 +55,45 @@ class SpanNode (@Expose(serialize = true, deserialize = true) val spanId: String
     }
 
     fun getCompactClone(): SpanNode {
-        return SpanNode(spanId,serviceName,parentId,startTime)
+        return SpanNode(spanId,serviceName,parentId,startTime,endTime,logSummary)
     }
 
     fun addChild(spanNode: SpanNode) {
         spanNode.parentId = spanId
         children.add(spanNode)
         children.sort()
+    }
+
+    fun updateLogSummary() {
+
+        var START = 0
+        var STOP = 0
+        var DEBUG = 0
+        var INFO = 0
+        var WARN = 0
+        var ERROR = 0
+        var CRITICAL = 0
+
+        events.forEach {
+            when (it.logLevel) {
+                "START" -> START++
+                "STOP" -> STOP++
+                "DEBUG" -> DEBUG++
+                "INFO" -> INFO++
+                "WARN" -> WARN++
+                "ERROR" -> ERROR++
+                "CRITICAL" -> CRITICAL++
+            }
+        }
+        logSummary.clear()
+
+        logSummary["START"] = START
+        logSummary["STOP"] = STOP
+        logSummary["DEBUG"] = DEBUG
+        logSummary["INFO"] = INFO
+        logSummary["WARN"] = WARN
+        logSummary["ERROR"] = ERROR
+        logSummary["CRITICAL"] = CRITICAL
+
     }
 }

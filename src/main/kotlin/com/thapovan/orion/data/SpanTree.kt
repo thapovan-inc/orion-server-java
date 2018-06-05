@@ -21,7 +21,13 @@ import com.google.gson.annotations.Expose
 class SpanTree {
 
     @Expose(serialize = true, deserialize = true)
-    private val spanMap = HashMap<String, SpanNode>()
+    val spanMap = HashMap<String, SpanNode>()
+
+    @Expose(serialize = true, deserialize = true)
+    val traceEventSummary = HashMap<String,Int>()
+
+    @Expose(serialize = true, deserialize = true)
+    private val anomalySpans = ArrayList<String>()
 
     @Expose(serialize = true, deserialize = true)
     var rootNode: SpanNode
@@ -38,5 +44,57 @@ class SpanTree {
     fun registerSpan(spanNode: SpanNode) {
         val compactSpan = spanNode.getCompactClone()
         this.spanMap[compactSpan.spanId] = compactSpan
+    }
+
+    fun computeTraceSummary() {
+        var START = 0
+        var STOP = 0
+        var DEBUG = 0
+        var INFO = 0
+        var WARN = 0
+        var ERROR = 0
+        var CRITICAL = 0
+        var ANOMALY = 0
+        anomalySpans.clear()
+        spanMap.values.forEach {
+            val spanSummary = it.logSummary
+            var startCount = 0
+            var stopCount = 0
+            spanSummary.entries.forEach {
+                val key = it.key
+                val value = it.value
+                when (key) {
+                    "START" -> {
+                        START += value
+                        startCount +=value
+                    }
+                    "STOP" -> {
+                        STOP += value
+                        stopCount += value
+                    }
+                    "DEBUG" -> DEBUG += value
+                    "INFO" -> INFO += value
+                    "WARN" -> WARN += value
+                    "ERROR" -> ERROR += value
+                    "CRITICAL" -> CRITICAL += value
+                }
+            }
+            if(!it.spanId.equals("ROOT") && (
+                        (it.startTime == 0L || it.endTime == 0L)
+                        || (startCount != 1 || stopCount != 1))) {
+                ANOMALY++
+                anomalySpans.add(it.spanId)
+            }
+        }
+        traceEventSummary.clear()
+
+        traceEventSummary["START"] = START
+        traceEventSummary["STOP"] = STOP
+        traceEventSummary["DEBUG"] = DEBUG
+        traceEventSummary["INFO"] = INFO
+        traceEventSummary["WARN"] = WARN
+        traceEventSummary["ERROR"] = ERROR
+        traceEventSummary["CRITICAL"] = CRITICAL
+        traceEventSummary["ANOMALY"] = ANOMALY
     }
 }
