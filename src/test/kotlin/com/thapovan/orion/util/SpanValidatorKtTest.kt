@@ -23,8 +23,8 @@ internal class SpanValidatorKtTest {
         var fiveMinsBefore = (currentTime - 5*60*1000) - 1
         val timeDiffMore = isHostClientTimeDiffExceeds(currentTime*1000)
         assertEquals(isHostClientTimeDiffExceeds(fiveMinsAfter*1000),true)
-    //    assertEquals(isHostClientTimeDiffExceeds(fiveMinsBefore*1000),true)
-        //assertEquals(timeDiffMore,false)
+        assertEquals(isHostClientTimeDiffExceeds(fiveMinsBefore*1000),true)
+        assertEquals(timeDiffMore,false)
     }
 
     @Test
