@@ -35,4 +35,6 @@ message Span {
     string service_name = 7;
     string event_location = 8;
     string parent_span_id = 9;
+
+    uint64 internal_span_ref_number = 10000;
 }

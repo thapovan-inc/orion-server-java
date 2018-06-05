@@ -111,10 +111,10 @@ object TraceSummaryBuilder {
                                 if (http.has("request")) {
                                     val request = http.getAsJsonObject("request")
                                     if (request.has("ip")) {
-                                        summary.country = request.get("ip").asString
+                                        summary.ip = request.get("ip").asString
                                     }
                                     if (request.has("country")) {
-                                        summary.ip = request.get("country").asString
+                                        summary.country = request.get("country").asString
                                     }
                                 }
                             } else {

@@ -39,10 +39,21 @@
 
 |Key|Value|
 |---|-----|
+|`app.identifier`| Identifier of the app |
+|`app.buildNo`| App's build number
 |`app.version`| Fully qualified app version|
-|`app.os`| Either `iOS` or `Android`|
-|`app.osVersion`| Fully qualified OS version as a string |
+|`app.minOSVersion`| Minimum OS version supported by the App |
+|`app.targetOSVersion`| Fully qualified OS version as a string |
 
+## Device Info
+
+|Key|Value|
+|---|-----|
+|`device.os`| `iOS` or `Android`|
+|`device.osVersion`| Fully qualified OS version as a string |
+|`device.model`| Model ID of the device|
+|`device.manufacturer`| Device manufacturer|
+|`device.id`| Device ID|
 
 ### Android Application
 

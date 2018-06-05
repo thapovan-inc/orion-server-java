@@ -20,17 +20,18 @@ import com.google.gson.annotations.Expose
 import kotlin.collections.ArrayList
 import kotlin.collections.HashMap
 
-class SpanNode(
+data class SpanNode(
     @Expose(serialize = true, deserialize = true) var spanId: String,
     @Expose(serialize = true, deserialize = true) var serviceName: String? = null,
     @Expose(serialize = true, deserialize = true) var parentId: String? = null,
     @Expose(serialize = true, deserialize = true) var startTime: Long = 0,
     @Expose(serialize = true, deserialize = true) var endTime: Long = 0,
     @Expose(serialize = true, deserialize = true) var logSummary: MutableMap<String, Int> = HashMap(),
-    @Expose(serialize = true, deserialize = true) val children: MutableList<SpanNode> = ArrayList(),
+    @Expose(serialize = true, deserialize = true) var children: MutableList<SpanNode> = ArrayList(),
     @Expose(serialize = true, deserialize = true) val events: MutableList<LogObject> = ArrayList(),
     @Expose(serialize = true, deserialize = true) var traceId: String? = null,
-    @Expose(serialize = true, deserialize = true) var traceName: String? = null
+    @Expose(serialize = true, deserialize = true) var traceName: String? = null,
+    @Expose(serialize = true, deserialize = true) var start_id: Long = 0
 ) : Comparable<SpanNode> {
 
     override fun compareTo(other: SpanNode): Int {
@@ -58,7 +59,7 @@ class SpanNode(
     }
 
     fun getCompactClone(): SpanNode {
-        return SpanNode(spanId, serviceName, parentId, startTime, endTime, logSummary)
+        return SpanNode(spanId, serviceName, parentId, startTime, endTime, logSummary, start_id = start_id)
     }
 
     fun addChild(spanNode: SpanNode) {

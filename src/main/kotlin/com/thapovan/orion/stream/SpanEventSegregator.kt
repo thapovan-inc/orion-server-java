@@ -82,6 +82,9 @@ object SpanEventSegregator {
             }
         metadataStream.to("span-metadata")
         startStopStream
+            .mapValues {
+                it.toBuilder().setInternalSpanRefNumber(System.nanoTime()).build()
+            }
             .mapValues { it.toByteArray() }
             .to("proto-span-start-stop")
         logStream

@@ -78,6 +78,7 @@ object FatTraceObject {
                         set.addAll(existingSpanNode.events)
                         set.addAll(spanNode.events)
                         val finalList = set.toMutableList()
+                        existingSpanNode.start_id = if(spanNode.start_id != 0L) spanNode.start_id else existingSpanNode.start_id
                         existingSpanNode.events.clear()
                         existingSpanNode.events.addAll(finalList)
                         existingSpanNode.events.sortBy { it.eventId }
@@ -159,6 +160,21 @@ object FatTraceObject {
                 },
                 Materialized.with(Serdes.String(), Serdes.ByteArray())
             )
+            .mapValues {
+                val footPrintTree = gson.fromJson<SpanTree>(String(it),aggTypeToken)
+                footPrintTree.spanMap.forEach { _, u ->
+                    val fullSpan = footPrintTree.rootNode.getIfExists(u)
+                    val spanCopy: SpanNode
+                    if (fullSpan != null) {
+                        spanCopy = fullSpan.copy(children = ArrayList())
+                        footPrintTree.spanList.add(spanCopy)
+                    }
+                }
+                footPrintTree.spanList.sortBy {
+                    it.start_id
+                }
+                gson.toJson(footPrintTree,aggTypeToken).toByteArray()
+            }
             .toStream()
             .selectKey { key, value ->  key.key()}
             .to("fat-trace-object")

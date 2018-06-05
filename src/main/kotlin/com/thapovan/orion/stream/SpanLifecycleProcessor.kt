@@ -60,7 +60,8 @@ object SpanLifecycleProcessor {
                             span.timestamp,
                             spanNode.endTime,
                             traceId= span.traceContext.traceId,
-                            traceName = span.traceContext.traceName
+                            traceName = span.traceContext.traceName,
+                            start_id = span.internalSpanRefNumber
                         )
                     } else if (span.hasEndEvent()) {
                         SpanNode(
@@ -70,7 +71,8 @@ object SpanLifecycleProcessor {
                             spanNode.startTime,
                             span.timestamp,
                             traceId= spanNode.traceId ?: span.traceContext.traceId,
-                            traceName = spanNode.traceName ?: span.traceContext.traceName
+                            traceName = spanNode.traceName ?: span.traceContext.traceName,
+                            start_id = spanNode.start_id
                         )
                     } else {
                         if (!span.serviceName.isNullOrEmpty() && span.serviceName.isNullOrBlank()) {
