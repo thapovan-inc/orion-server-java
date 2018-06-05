@@ -22,4 +22,5 @@ package com.thapovan.orion.proto;
 
 message Trace {
     string trace_id = 1;
+    string trace_name = 2;
 }

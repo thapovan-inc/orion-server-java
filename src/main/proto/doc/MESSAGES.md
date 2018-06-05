@@ -56,7 +56,6 @@ The field `location` is a string which denotes the code location within which th
 message StartEvent {
     int64 event_id = 1;
     oneof metadata {
-        google.protobuf.Struct protoStruct = 2;
         string jsonString = 3;
     }
 }
@@ -64,7 +63,7 @@ message StartEvent {
 
 The `StartEvent` is emitted only once and at the start of the span. Any span without a start event is marked as an anomaly. The `event_id` is denoted by an unsigned 64-bit integer. The `event_id` must be [monotonically increasing](https://en.wikipedia.org/wiki/Monotonic_function) within a `Span`. 
 
-Optionally `metadata` can be added to the event as a `jsonString` or as a `protobuf Struct`. It would make sense to include the platform details such as OS, `process_id` etc. as the metadata for the `StartEvent`
+Optionally `metadata` can be added to the event as a `jsonString` . It would make sense to include the platform details such as OS, `process_id` etc. as the metadata for the `StartEvent`
 
 ## EndEvent
 
@@ -72,7 +71,6 @@ Optionally `metadata` can be added to the event as a `jsonString` or as a `proto
 message EndEvent {
     uint64 event_id = 1;
     oneof metadata {
-        google.protobuf.Struct protoStruct = 2;
         string jsonString = 3;
     }
 }
@@ -88,7 +86,6 @@ message LogEvent {
     LogLevel level = 2;
     string message = 3;
     oneof metadata {
-        google.protobuf.Struct protoStruct = 4;
         string jsonString = 5;
     }
 }
@@ -104,43 +101,11 @@ When the trace context is passed on to a HTTP service, the following headers mus
 * `X-ORION-TRACE-ID` : The UUID v4 trace ID of the originating context
 * `X-ORION-PARENT-SPAN-ID` : The UUID v4 trace ID of the originating span.
 
-The receiving service is responsible to parse the `Trace` context and the parent `Span` content. It is also the responsibility of the receiver to set up appropriate **CORS** headers.
+The **receiving service** is responsible for:
+* Parsing the `Trace` context and the parent `Span` content. 
+* To set up appropriate **CORS** headers.
+* Passing back the `X-ORION-TRACE-ID` header when responding to a request
 
 # Metadata
 
-## Generic
-
-|Key|Value|
-|---|-----|
-|`service.os`| The OS on which the service runs |
-|`service.version`| Fully qualified service version |
-|`service.platform`| The language platform eg: `JVM`, `CLR`, `PHP`, `NODEJS` |
-
-## HTTP Services
-
-|Key|Value|
-|---|-----|
-|`http.method`| Any of the valid HTTP methods viz. `GET`, `POST`, `PUT`, `HEADER`, `OPTIONS`, `DELETE`, `PATCH`|
-|`http.content_type`| MIME content type of the request|
-|`http.status_code`| Response status code |
-|`http.url`| Request URL |
-|`http.request.body` | JSON request body content. Must not exceed 64kb. Any other content type will not be processed by the tracer|
-|`http.response.body` | JSON response body content. Must not exceed 64kb. Any other content type will not be processed by the tracer|
-|`http.response.content_length` | Content length of response body |
-
-## Mobile Application
-
-|Key|Value|
-|---|-----|
-|`app.version`| Fully qualified app version|
-|`app.os`| Either `iOS` or `Android`|
-|`app.osVersion`| Fully qualified OS version as a string |
-
-
-### Android Application
-
-|Key|Value|
-|---|-----|
-|`android.activity`| The activity from which the event is emitted|
-|`android.fragment`| The fragment within the activity from which the event is emitted|
-|`android.service`| Denoted the service from which the event originates|
+See [METADATA.md](METADATA.md)
