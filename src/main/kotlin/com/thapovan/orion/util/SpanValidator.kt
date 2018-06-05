@@ -68,7 +68,7 @@ fun validateBulkSpans(spans: MutableList<Span>?): String?{
 fun isHostClientTimeDiffExceeds(timestamp: Long): Boolean{
     var timestamp = timestamp/1000
 
-    var currentTime = System.currentTimeMillis()- utcOffset
+    var currentTime = System.currentTimeMillis()
     LOG.debug("currentTime: "+currentTime)
     LOG.debug("timestamp: "+timestamp)
     val timeDiff = Math.abs(timestamp - currentTime)

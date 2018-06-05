@@ -68,8 +68,10 @@ object TraceSummaryBuilder {
                     startTime,
                     endTime,
                     serviceNames = servicesList,
-                    traceEventSummary = spanTree.traceEventSummary ?: HashMap()
+                    traceEventSummary = spanTree.traceEventSummary ?: HashMap(),
+                    traceName = spanTree.traceName
                 )
+                println("traceSummaryTable ${traceSummary.traceName}")
                 KeyValue.pair(key, gson.toJson(traceSummary, traceSummaryType).toByteArray())
             }
 
@@ -174,6 +176,7 @@ object TraceSummaryBuilder {
                     } catch (t: Throwable) {
 
                     }
+                    println("traceSummaryTable join ${summary.traceName}")
                     gson.toJson(summary, traceSummaryType).toByteArray()
                 },
                 JoinWindows.of(KafkaStream.WINDOW_DURATION_MS)
@@ -189,6 +192,7 @@ object TraceSummaryBuilder {
                     val traceId = key
                     println("received summary startcount ${summary.start_trace_count} endcount ${summary.end_trace_count}")
                     println("received intermediate startcount ${intermediateSummary.start_trace_count} endcount ${intermediateSummary.end_trace_count}")
+                    println("aggregate summary: ${summary.traceName} intermediate: ${intermediateSummary.traceName}")
                     val startTime =
                         if (intermediateSummary.startTime == 0L) summary.startTime else if (summary.startTime != 0L && summary.startTime < intermediateSummary.startTime) {
                             summary.startTime
@@ -229,7 +233,7 @@ object TraceSummaryBuilder {
                     val traceName =
                         if (intermediateSummary.traceName.isNullOrBlank() && !summary.traceName.isNullOrBlank())
                             summary.traceName
-                        else null
+                        else intermediateSummary.traceName
                     val finalSummary = TraceSummary(
                         traceId, startTime, endTime, email, userId, services, traceSummary,
                         country,

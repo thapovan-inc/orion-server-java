@@ -27,6 +27,7 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
 
     override fun uploadSpan(request: UnaryRequest?, responseObserver: StreamObserver<ServerResponse>?) {
         try {
+
             var response: ServerResponse? = null
             var spanValidationMsg = validateSpanMessage(request?.spanData)
             if(spanValidationMsg.isNullOrEmpty()){
