@@ -35,7 +35,7 @@ class TracerGrpcServer {
             .addService(TracerGrpcServiceImpl())
             .build()
             .start()
-        LOG.info("Tracer gRPC Server started and listening on port {}",grpcPort)
+        LOG.info("Tracer gRPC Server started and listening on port {}", grpcPort)
         Runtime.getRuntime().addShutdownHook(object : Thread() {
             override fun run() {
                 val LOG = LogManager.getLogger(this@TracerGrpcServer.javaClass)

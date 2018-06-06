@@ -43,10 +43,12 @@ object TracerHttpServerHandler {
         response.header("Content-Type", "application/json")
         try {
             val unaryRequestBuilder = UnaryRequest.newBuilder()
-            JsonFormat.parser().usingTypeRegistry(JsonFormat.TypeRegistry.newBuilder()
-                .add(UnaryRequest.getDescriptor())
-                .add(Span.getDescriptor())
-                .build()).merge(jsonBody, unaryRequestBuilder)
+            JsonFormat.parser().usingTypeRegistry(
+                JsonFormat.TypeRegistry.newBuilder()
+                    .add(UnaryRequest.getDescriptor())
+                    .add(Span.getDescriptor())
+                    .build()
+            ).merge(jsonBody, unaryRequestBuilder)
             val unaryRequest = unaryRequestBuilder.build()
             if (!unaryRequest.hasSpanData() && !unaryRequest.spanData.spanId.isNullOrEmpty()) {
                 sendError(response, Exception("Span Data not found"))
@@ -90,7 +92,8 @@ object TracerHttpServerHandler {
 
     fun sendError(response: Response, cause: Throwable): String {
         val failureResponse = failureResponsePartial.toBuilder().setMessage(cause.message).build()
-        return  JsonFormat.printer().omittingInsignificantWhitespace().preservingProtoFieldNames().print(
-                failureResponse)
+        return JsonFormat.printer().omittingInsignificantWhitespace().preservingProtoFieldNames().print(
+            failureResponse
+        )
     }
 }

@@ -75,8 +75,8 @@ class TracerHttpServer {
         LOG.info("Tracer HTTP Server started on port {}", httpPort)
     }
 
-fun stop() {
-    LOG.info("Tracer HTTP Server stopping")
-    Spark.stop()
-}
+    fun stop() {
+        LOG.info("Tracer HTTP Server stopping")
+        Spark.stop()
+    }
 }

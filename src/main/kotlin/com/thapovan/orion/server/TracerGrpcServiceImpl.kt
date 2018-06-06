@@ -17,11 +17,12 @@
 package com.thapovan.orion.server
 
 import com.thapovan.orion.proto.*
+import com.thapovan.orion.util.validateBulkSpans
+import com.thapovan.orion.util.validateSpanMessage
 import io.grpc.stub.StreamObserver
 import org.apache.logging.log4j.LogManager
-import com.thapovan.orion.util.*
 
-internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
+internal class TracerGrpcServiceImpl : TracerGrpc.TracerImplBase() {
 
     private val LOG = LogManager.getLogger(TracerGrpcServiceImpl::class.java)
 
@@ -30,27 +31,27 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
 
             var response: ServerResponse? = null
             var spanValidationMsg = validateSpanMessage(request?.spanData)
-            if(spanValidationMsg.isNullOrEmpty()){
+            if (spanValidationMsg.isNullOrEmpty()) {
                 KafkaProducer.pushSpanEvent(request?.spanData!!)
                 LOG.info("Published request to kafka")
-                 response = ServerResponse.newBuilder()
-                        .setSuccess(true)
-                        .setMessage("")
-                        .setCode("")
-                        .build()
+                response = ServerResponse.newBuilder()
+                    .setSuccess(true)
+                    .setMessage("")
+                    .setCode("")
+                    .build()
 
             } else {
-                 response = ServerResponse.newBuilder()
-                        .setSuccess(false)
-                        .setMessage(spanValidationMsg)
-                        .setCode("")
-                        .build()
+                response = ServerResponse.newBuilder()
+                    .setSuccess(false)
+                    .setMessage(spanValidationMsg)
+                    .setCode("")
+                    .build()
 
             }
             responseObserver?.onNext(response)
             responseObserver?.onCompleted()
         } catch (e: Throwable) {
-            LOG.error("Error in uploadSpan",e)
+            LOG.error("Error in uploadSpan", e)
         }
     }
 
@@ -60,19 +61,19 @@ internal class TracerGrpcServiceImpl: TracerGrpc.TracerImplBase() {
         var response: ServerResponse? = null
 
         val validationMsg = validateBulkSpans(spans)
-        if(validationMsg.isNullOrEmpty()){
+        if (validationMsg.isNullOrEmpty()) {
             spans?.forEach {
-               KafkaProducer.pushSpanEvent(it)
+                KafkaProducer.pushSpanEvent(it)
             }
         }
-          response = ServerResponse.newBuilder()
-                .setSuccess(validationMsg.isNullOrEmpty())
-                .setMessage(validationMsg)
-                .setCode("")
-                .build()
-            responseObserver?.onNext(response)
-            responseObserver?.onCompleted()
-        }
+        response = ServerResponse.newBuilder()
+            .setSuccess(validationMsg.isNullOrEmpty())
+            .setMessage(validationMsg)
+            .setCode("")
+            .build()
+        responseObserver?.onNext(response)
+        responseObserver?.onCompleted()
+    }
 
     override fun uploadSpanStream(responseObserver: StreamObserver<ServerResponse>?): StreamObserver<StreamRequest> {
         return super.uploadSpanStream(responseObserver)

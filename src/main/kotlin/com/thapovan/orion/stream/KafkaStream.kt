@@ -34,55 +34,54 @@ class KafkaStream {
         val metadataObjectType = object : TypeToken<MetaDataObject>() {}.type
         val logObjectArrayType = object : TypeToken<MutableList<LogObject>>() {}.type
 
-        val incomingRequestStream = streamBuilder.stream<String,ByteArray>("incoming-request")
+        val incomingRequestStream = streamBuilder.stream<String, ByteArray>("incoming-request")
 
         val incomingRequestSpanStream = incomingRequestStream
             .mapValues {
                 Span.parseFrom(it)
             }
 
-        JsonDebugStream.buildGraph(streamBuilder,incomingRequestStream)
-        SpanEventSegregator.buildGraph(streamBuilder,incomingRequestStream)
+        JsonDebugStream.buildGraph(streamBuilder, incomingRequestStream)
+        SpanEventSegregator.buildGraph(streamBuilder, incomingRequestStream)
 
-        val protoSpanStartStopEventStream
-                = streamBuilder.stream<String,ByteArray>("proto-span-start-stop")
+        val protoSpanStartStopEventStream = streamBuilder.stream<String, ByteArray>("proto-span-start-stop")
             .mapValues {
                 Span.parseFrom(it)
             }
 
-        SpanLifecycleProcessor.buildGraph(streamBuilder,incomingRequestSpanStream)
+        SpanLifecycleProcessor.buildGraph(streamBuilder, incomingRequestSpanStream)
 
-        val spanStartStopRaw = streamBuilder.stream<String,ByteArray>("span-start-stop")
+        val spanStartStopRaw = streamBuilder.stream<String, ByteArray>("span-start-stop")
         val spanStartStop = spanStartStopRaw
             .mapValues {
-                gson.fromJson<SpanNode>(String(it),spanNodeType)
+                gson.fromJson<SpanNode>(String(it), spanNodeType)
             }
 
-        val protoLogEventStream = streamBuilder.stream<String,ByteArray>("proto-span-log")
+        val protoLogEventStream = streamBuilder.stream<String, ByteArray>("proto-span-log")
             .mapValues {
                 Span.parseFrom(it)
             }
 
-        val metaDataObject = streamBuilder.stream<String,ByteArray>("span-metadata")
+        val metaDataObject = streamBuilder.stream<String, ByteArray>("span-metadata")
             .mapValues {
-                gson.fromJson<MetaDataObject>(String(it),metadataObjectType)
+                gson.fromJson<MetaDataObject>(String(it), metadataObjectType)
             }
 
-        val spanLogAggregateStream = streamBuilder.stream<String,ByteArray>("span-log-aggregated")
+        val spanLogAggregateStream = streamBuilder.stream<String, ByteArray>("span-log-aggregated")
 //            .mapValues {
 //                gson.fromJson<MutableList<LogObject>>(String(it),logObjectArrayType)
 //            }
 
-        SpanLogAggregator.buildGraph(streamBuilder,protoSpanStartStopEventStream, protoLogEventStream)
+        SpanLogAggregator.buildGraph(streamBuilder, protoSpanStartStopEventStream, protoLogEventStream)
 //        FootprintBuilder.buildGraph(streamBuilder,incomingRequestStream,spanStartStop)
 
-        FatTraceObject.buildGraph(streamBuilder,spanLogAggregateStream,spanStartStopRaw)
+        FatTraceObject.buildGraph(streamBuilder, spanLogAggregateStream, spanStartStopRaw)
 
-        val fatTraceObjectStream = streamBuilder.stream<String,ByteArray>("fat-trace-object")
+        val fatTraceObjectStream = streamBuilder.stream<String, ByteArray>("fat-trace-object")
 
-        TraceSummaryBuilder.buildGraph(streamBuilder,fatTraceObjectStream,metaDataObject)
+        TraceSummaryBuilder.buildGraph(streamBuilder, fatTraceObjectStream, metaDataObject)
 
-        kafkaStream = KafkaStreams(streamBuilder.build(),streamConfig)
+        kafkaStream = KafkaStreams(streamBuilder.build(), streamConfig)
         kafkaStream?.cleanUp()
         kafkaStream?.start()
         LOG.info("Kafka stream processor started")

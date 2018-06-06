@@ -264,7 +264,7 @@ object TraceSummaryBuilder {
         summaryStream.foreach { _, value -> println(String(value)) }
         summaryStream
             .filter { key, value ->
-                val summary = gson.fromJson<TraceSummary>(String(value),traceSummaryType)
+                val summary = gson.fromJson<TraceSummary>(String(value), traceSummaryType)
                 summary.startTime != 0L && summary.endTime != 0L
             }
             .to("trace-summary-json")

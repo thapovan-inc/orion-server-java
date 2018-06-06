@@ -33,7 +33,7 @@ import java.util.*
 object KafkaProducer {
 
     private val producerProperties: Properties = Properties()
-    private val producer: KafkaProducer<String,ByteArray>
+    private val producer: KafkaProducer<String, ByteArray>
     private val LOG = LogManager.getLogger(this.javaClass)
 
     const val REQUEST_TOPIC = "incoming-request"
@@ -78,17 +78,17 @@ object KafkaProducer {
 
 
         newSpanBuilder.setSpanId(normSpandId).setParentSpanId(normParentSpanId).setTraceContext(newTrace)
-        if(newSpanBuilder.hasStartEvent()) {
+        if (newSpanBuilder.hasStartEvent()) {
             newSpanBuilder.internalSpanRefNumber = System.nanoTime()
         }
         val newSpan = newSpanBuilder.build()
         val key = "${normTraceId}_${normSpandId}_$eventID"
-        val value:ByteArray = newSpan.toByteArray()
+        val value: ByteArray = newSpan.toByteArray()
         val partition = key[0].toInt().rem(4)
-        val producerRecord = ProducerRecord(REQUEST_TOPIC, partition, key,value)
+        val producerRecord = ProducerRecord(REQUEST_TOPIC, partition, key, value)
         producer.send(producerRecord, { recordMetaData: RecordMetadata, exception: Exception? ->
             if (exception != null) {
-                LOG.error("Error when pushing record to kafka broken: ${exception.message}",exception)
+                LOG.error("Error when pushing record to kafka broken: ${exception.message}", exception)
             } else {
                 LOG.info("Published record. offset: ${recordMetaData.offset()}")
             }

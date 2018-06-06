@@ -36,12 +36,12 @@ object FatTraceObject {
                     val spanNode = if (spanNodeBytes == null || spanNodeBytes.size == 0) {
                         SpanNode("")
                     } else {
-                        gson.fromJson<SpanNode>(String(spanNodeBytes),spanNodeTypeToken)
+                        gson.fromJson<SpanNode>(String(spanNodeBytes), spanNodeTypeToken)
                     }
                     val spanLogArray = if (spanLogArrayBytes == null || spanLogArrayBytes.size == 0) {
                         ArrayList()
                     } else {
-                        gson.fromJson<MutableList<LogObject>>(String(spanLogArrayBytes),logArrTypeToken)
+                        gson.fromJson<MutableList<LogObject>>(String(spanLogArrayBytes), logArrTypeToken)
                     }
                     val set = HashSet<LogObject>()
                     set.addAll(spanLogArray)
@@ -50,15 +50,18 @@ object FatTraceObject {
                     spanNode.events.clear()
                     spanNode.events.addAll(finalList)
                     spanNode.events.sortBy { it.eventId }
-                    gson.toJson(spanNode,spanNodeTypeToken).toByteArray()
+                    gson.toJson(spanNode, spanNodeTypeToken).toByteArray()
                 },
                 JoinWindows.of(KafkaStream.WINDOW_DURATION_MS)
             )
             .map { key, value ->
                 val spanId = key.split("_")[1]
-                val spanNode = gson.fromJson<SpanNode>(String(value),spanNodeTypeToken)
+                val spanNode = gson.fromJson<SpanNode>(String(value), spanNodeTypeToken)
                 spanNode.spanId = spanId
-                return@map KeyValue<String,ByteArray>(key.split("_")[0],gson.toJson(spanNode,spanNodeTypeToken).toByteArray())
+                return@map KeyValue<String, ByteArray>(
+                    key.split("_")[0],
+                    gson.toJson(spanNode, spanNodeTypeToken).toByteArray()
+                )
             }
             .groupByKey()
             .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS))
@@ -69,7 +72,7 @@ object FatTraceObject {
                 { key, spanNodeBytes, bValueAggregate ->
                     val footPrintTree =
                         gson.fromJson<SpanTree>(String(bValueAggregate), aggTypeToken)
-                    val spanNode = gson.fromJson<SpanNode>(String(spanNodeBytes),spanNodeTypeToken)
+                    val spanNode = gson.fromJson<SpanNode>(String(spanNodeBytes), spanNodeTypeToken)
                     val tree = footPrintTree.rootNode
                     val existingSpanNode: SpanNode? = tree.getIfExists(spanNode)
                     if (existingSpanNode != null) { // -> denotes that we have seen this span already
@@ -78,17 +81,18 @@ object FatTraceObject {
                         set.addAll(existingSpanNode.events)
                         set.addAll(spanNode.events)
                         val finalList = set.toMutableList()
-                        existingSpanNode.start_id = if(spanNode.start_id != 0L) spanNode.start_id else existingSpanNode.start_id
+                        existingSpanNode.start_id =
+                                if (spanNode.start_id != 0L) spanNode.start_id else existingSpanNode.start_id
                         existingSpanNode.events.clear()
                         existingSpanNode.events.addAll(finalList)
                         existingSpanNode.events.sortBy { it.eventId }
                         existingSpanNode.updateLogSummary()
 
-                        if(existingSpanNode.traceId.isNullOrBlank() && !spanNode.traceId.isNullOrBlank()) {
+                        if (existingSpanNode.traceId.isNullOrBlank() && !spanNode.traceId.isNullOrBlank()) {
                             existingSpanNode.traceId = spanNode.traceId
                         }
 
-                        if(existingSpanNode.traceName.isNullOrBlank() && !spanNode.traceName.isNullOrBlank()) {
+                        if (existingSpanNode.traceName.isNullOrBlank() && !spanNode.traceName.isNullOrBlank()) {
                             existingSpanNode.traceName = spanNode.traceName
                         }
 
@@ -102,7 +106,7 @@ object FatTraceObject {
                         if (existingSpanNode.startTime == 0L && spanNode.startTime != 0L) {
                             existingSpanNode.startTime = spanNode.startTime
                         }
-                        if (existingSpanNode.endTime == 0L && spanNode.endTime != 0L){
+                        if (existingSpanNode.endTime == 0L && spanNode.endTime != 0L) {
                             existingSpanNode.endTime = spanNode.endTime
                         }
 
@@ -161,7 +165,7 @@ object FatTraceObject {
                 Materialized.with(Serdes.String(), Serdes.ByteArray())
             )
             .mapValues {
-                val footPrintTree = gson.fromJson<SpanTree>(String(it),aggTypeToken)
+                val footPrintTree = gson.fromJson<SpanTree>(String(it), aggTypeToken)
                 footPrintTree.spanMap.forEach { _, u ->
                     val fullSpan = footPrintTree.rootNode.getIfExists(u)
                     val spanCopy: SpanNode
@@ -173,10 +177,10 @@ object FatTraceObject {
                 footPrintTree.spanList.sortBy {
                     it.start_id
                 }
-                gson.toJson(footPrintTree,aggTypeToken).toByteArray()
+                gson.toJson(footPrintTree, aggTypeToken).toByteArray()
             }
             .toStream()
-            .selectKey { key, value ->  key.key()}
+            .selectKey { key, value -> key.key() }
             .to("fat-trace-object")
     }
 }

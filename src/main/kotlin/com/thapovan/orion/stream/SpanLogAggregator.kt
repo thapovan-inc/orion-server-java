@@ -4,7 +4,6 @@ import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.thapovan.orion.data.LogObject
-import com.thapovan.orion.data.SpanNode
 import com.thapovan.orion.proto.Span
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
@@ -128,23 +127,23 @@ object SpanLogAggregator {
             .leftJoin(
                 logArrStream,
                 { logObjectByte: ByteArray?, logArrayByte: ByteArray? ->
-                        val logArray = if (logArrayByte == null || logArrayByte.isEmpty()) {
-                            ArrayList<LogObject>()
-                        } else {
-                            gson.fromJson<MutableList<LogObject>>(String(logArrayByte), logArrTypeToken)
-                        }
+                    val logArray = if (logArrayByte == null || logArrayByte.isEmpty()) {
+                        ArrayList<LogObject>()
+                    } else {
+                        gson.fromJson<MutableList<LogObject>>(String(logArrayByte), logArrTypeToken)
+                    }
 
-                        val finalArray = if (logObjectByte == null || logObjectByte.isEmpty()) {
-                            logArray
-                        } else {
-                            val logObject = gson.fromJson<LogObject>(String(logObjectByte), logTypeToken)
-                            logArray.add(logObject)
-                            logArray.sortBy {
-                                it.eventId
-                            }
-                            logArray
+                    val finalArray = if (logObjectByte == null || logObjectByte.isEmpty()) {
+                        logArray
+                    } else {
+                        val logObject = gson.fromJson<LogObject>(String(logObjectByte), logTypeToken)
+                        logArray.add(logObject)
+                        logArray.sortBy {
+                            it.eventId
                         }
-                        gson.toJson(finalArray, logArrTypeToken).toByteArray()
+                        logArray
+                    }
+                    gson.toJson(finalArray, logArrTypeToken).toByteArray()
                 },
                 JoinWindows.of(KafkaStream.WINDOW_DURATION_MS)
             )
@@ -154,15 +153,14 @@ object SpanLogAggregator {
                 {
                     gson.toJson(ArrayList<LogObject>() as MutableList<LogObject>, logArrTypeToken).toByteArray()
                 },
-                {
-                        key: String, aggregate1: ByteArray, aggregate2: ByteArray ->
-                    val logArray1 = gson.fromJson<MutableList<LogObject>>(String(aggregate1),logArrTypeToken)
-                    val logArray2 = gson.fromJson<MutableList<LogObject>>(String(aggregate2),logArrTypeToken)
+                { key: String, aggregate1: ByteArray, aggregate2: ByteArray ->
+                    val logArray1 = gson.fromJson<MutableList<LogObject>>(String(aggregate1), logArrTypeToken)
+                    val logArray2 = gson.fromJson<MutableList<LogObject>>(String(aggregate2), logArrTypeToken)
                     val set = HashSet<LogObject>()
                     set.addAll(logArray1)
                     set.addAll(logArray2)
                     val finalList = set.toMutableList().sortedBy { it.eventId }
-                    gson.toJson(finalList,logArrTypeToken).toByteArray()
+                    gson.toJson(finalList, logArrTypeToken).toByteArray()
                 },
                 Materialized.with(Serdes.String(), Serdes.ByteArray())
             )

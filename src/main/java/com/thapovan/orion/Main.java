@@ -14,7 +14,7 @@ import java.util.Properties;
 public class Main {
     private static Logger LOG = LogManager.getLogger(Main.class);
 
-    public static void main(String[] args){
+    public static void main(String[] args) {
         try {
             TracerGrpcServer server = new TracerGrpcServer();
             server.start(20691);
@@ -37,11 +37,11 @@ public class Main {
 
             server.blockUntilShutdown();
         } catch (IOException e) {
-            LOG.error("IOException occured",e);
+            LOG.error("IOException occured", e);
         } catch (InterruptedException e) {
-            LOG.error("InterruptedException occured",e);
+            LOG.error("InterruptedException occured", e);
         } catch (Throwable e) {
-            LOG.error("Uncaught error has emerge",e);
+            LOG.error("Uncaught error has emerge", e);
         }
     }
 }

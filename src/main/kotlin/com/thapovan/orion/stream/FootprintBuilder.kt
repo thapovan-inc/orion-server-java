@@ -40,7 +40,7 @@ class FootprintBuilder {
                 }
             val footPrintStream = spanStartStop
                 .mapValues {
-                    gson.toJson(it,spanNodeTypeToken).toByteArray()
+                    gson.toJson(it, spanNodeTypeToken).toByteArray()
                 }
                 .groupBy { key, value ->
                     key.split("_")[0]
@@ -53,7 +53,7 @@ class FootprintBuilder {
                     { key, spanNodeBytes, bValueAggregate ->
                         val footPrintTree =
                             gson.fromJson<SpanTree>(String(bValueAggregate), aggTypeToken)
-                        val spanNode = gson.fromJson<SpanNode>(String(spanNodeBytes),spanNodeTypeToken)
+                        val spanNode = gson.fromJson<SpanNode>(String(spanNodeBytes), spanNodeTypeToken)
                         val tree = footPrintTree.rootNode
                         val existingSpanNode: SpanNode? = tree.getIfExists(spanNode)
                         if (existingSpanNode != null) { // -> denotes that we have seen this span already
@@ -68,7 +68,7 @@ class FootprintBuilder {
                             if (existingSpanNode.startTime == 0L && spanNode.startTime != 0L) {
                                 existingSpanNode.startTime = spanNode.startTime
                             }
-                            if (existingSpanNode.endTime == 0L && spanNode.endTime != 0L){
+                            if (existingSpanNode.endTime == 0L && spanNode.endTime != 0L) {
                                 existingSpanNode.endTime = spanNode.endTime
                             }
 
@@ -124,7 +124,7 @@ class FootprintBuilder {
                     Materialized.with(Serdes.String(), Serdes.ByteArray())
                 )
                 .toStream()
-                .selectKey { key, value ->  key.key()}
+                .selectKey { key, value -> key.key() }
 
             footPrintStream.to("trace-footprint")
 //            footPrintStream.foreach({ _, byteValue ->

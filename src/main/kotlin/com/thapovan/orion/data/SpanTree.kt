@@ -30,7 +30,7 @@ class SpanTree {
     val spanMap = HashMap<String, SpanNode>()
 
     @Expose(serialize = true, deserialize = true)
-    val traceEventSummary = HashMap<String,Int>()
+    val traceEventSummary = HashMap<String, Int>()
 
     @Expose(serialize = true, deserialize = true)
     private val anomalySpans = ArrayList<String>()
@@ -75,7 +75,7 @@ class SpanTree {
                 when (key) {
                     "START" -> {
                         START += value
-                        startCount +=value
+                        startCount += value
                     }
                     "STOP" -> {
                         STOP += value
@@ -88,9 +88,10 @@ class SpanTree {
                     "CRITICAL" -> CRITICAL += value
                 }
             }
-            if(!it.spanId.equals("ROOT") && (
+            if (!it.spanId.equals("ROOT") && (
                         (it.startTime == 0L || it.endTime == 0L)
-                        || (startCount != 1 || stopCount != 1))) {
+                                || (startCount != 1 || stopCount != 1))
+            ) {
                 ANOMALY++
                 anomalySpans.add(it.spanId)
             }

@@ -17,8 +17,6 @@
 package com.thapovan.orion.data
 
 import com.google.gson.annotations.Expose
-import kotlin.collections.ArrayList
-import kotlin.collections.HashMap
 
 data class SpanNode(
     @Expose(serialize = true, deserialize = true) var spanId: String,
