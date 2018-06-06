@@ -33,6 +33,6 @@ data class TraceSummary(
     @Expose(serialize = true, deserialize = true) var traceIncomplete: Boolean = false,
     @Expose(serialize = true, deserialize = true) var end_trace_count: Int = 0,
     @Expose(serialize = true, deserialize = true) val traceName: String? = null,
-    @Expose(serialize = true, deserialize = true) var deviceInfo: JsonObject? = null,
-    @Expose(serialize = true, deserialize = true) var appInfo: JsonObject? = null
+    @Expose(serialize = true, deserialize = true) var deviceInfo: JsonObject = JsonObject(),
+    @Expose(serialize = true, deserialize = true) var appInfo: JsonObject = JsonObject()
 )
