@@ -18,17 +18,18 @@ package com.thapovan.orion.stream
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonNull
-import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.thapovan.orion.data.MetaDataObject
 import com.thapovan.orion.data.SpanTree
 import com.thapovan.orion.data.TraceSummary
+import com.thapovan.orion.server.KafkaProducer
 import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.JoinWindows
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.TimeWindows
+import redis.clients.jedis.JedisPool
 import kotlin.math.max
 import kotlin.math.min
 
@@ -36,7 +37,8 @@ object TraceSummaryBuilder {
     fun buildGraph(
         streamsBuilder: StreamsBuilder,
         fatTraceObjectStream: KStream<String, ByteArray>,
-        metaDataObject: KStream<String, MetaDataObject>
+        metaDataObject: KStream<String, MetaDataObject>,
+        jedis: JedisPool
     ) {
         val gson = GsonBuilder()
             .excludeFieldsWithoutExposeAnnotation()
@@ -71,7 +73,8 @@ object TraceSummaryBuilder {
                     endTime,
                     serviceNames = servicesList,
                     traceEventSummary = spanTree.traceEventSummary ?: HashMap(),
-                    traceName = spanTree.traceName
+                    traceName = spanTree.traceName,
+                    summaryVersion = System.nanoTime()
                 )
                 println("traceSummaryTable ${traceSummary.traceName}")
                 KeyValue.pair(key, gson.toJson(traceSummary, traceSummaryType).toByteArray())
@@ -106,12 +109,12 @@ object TraceSummaryBuilder {
                         null
                     }
                     val summary = if (summaryBytes == null || summaryBytes.size == 0) {
-                        TraceSummary("")
+                        TraceSummary("",summaryVersion = System.nanoTime())
                     } else {
                         try {
                             gson.fromJson<TraceSummary>(String(summaryBytes), traceSummaryType)
                         } catch(e: Throwable) {
-                            TraceSummary("")
+                            TraceSummary("", summaryVersion = System.nanoTime())
                         }
                     }
                     try {
@@ -202,7 +205,7 @@ object TraceSummaryBuilder {
             .groupByKey()
             .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS))
             .aggregate({
-                gson.toJson(TraceSummary(""), traceSummaryType).toByteArray()
+                gson.toJson(TraceSummary("", summaryVersion = System.nanoTime()), traceSummaryType).toByteArray()
             },
                 { key: String, value: ByteArray?, aggregate: ByteArray ->
                     val summary = if (value != null && !value.isEmpty() ) {
@@ -248,7 +251,7 @@ object TraceSummaryBuilder {
                     val startTraceCount = summary.start_trace_count + intermediateSummary.start_trace_count
                     val endTraceCount = summary.end_trace_count + intermediateSummary.end_trace_count
                     var traceIncomplete = false
-                    if (startTraceCount == 0 || endTraceCount == 0 || startTraceCount != endTraceCount) {
+                    if (startTraceCount == 0 || endTraceCount == 0 || (startTraceCount != endTraceCount)) {
                         traceIncomplete = true
                     }
 
@@ -268,19 +271,43 @@ object TraceSummaryBuilder {
                         end_trace_count = endTraceCount,
                         traceName = traceName,
                         deviceInfo = deviceInfo,
-                        appInfo = appInfo
+                        appInfo = appInfo,
+                        summaryVersion = System.nanoTime()
                     )
                     gson.toJson(finalSummary, traceSummaryType).toByteArray()
                 })
             .toStream()
             .selectKey { key, _ -> key.key() }
-
-        summaryStream.foreach { _, value -> println(String(value)) }
-        summaryStream
             .filter { key, value ->
                 val summary = gson.fromJson<TraceSummary>(String(value), traceSummaryType)
-                summary.startTime != 0L && summary.endTime != 0L
+                if (summary.startTime != 0L && summary.endTime != 0L) {
+                    KafkaProducer.pushEmitTraceSummaryTrigger(traceId = summary.traceId)
+                } else {
+                    val redis = jedis.resource
+                    redis.set(summary.traceId,"")
+                    redis.expire(summary.traceId,60)
+                    redis.close()
+                }
+                true
             }
+            .through("trace-summary-intermediate")
+
+                streamsBuilder.
+
+//        summaryStream.foreach { _, value -> println(String(value)) }
+
+//        emitSummarySignal
+//            .filter { key, value ->
+//                println("triggered trace id: $key")
+//                return@filter true
+//            }
+//            .join(
+//                summaryStream,
+//            {
+//                _: ByteArray?, summaryBytes: ByteArray? ->
+//                summaryBytes
+//            },
+//            JoinWindows.of(1*60*1000))
             .to("trace-summary-json")
 
     }

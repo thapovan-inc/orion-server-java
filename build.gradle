@@ -76,6 +76,8 @@ dependencies {
     testCompile "org.jetbrains.kotlin:kotlin-test-junit"
     testRuntime 'org.junit.jupiter:junit-jupiter-engine:5.2.0'
 
+    compile group: 'redis.clients', name: 'jedis', version: '2.9.0'
+
 }
 
 sourceSets {

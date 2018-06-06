@@ -6,12 +6,17 @@ import com.thapovan.orion.data.LogObject
 import com.thapovan.orion.data.MetaDataObject
 import com.thapovan.orion.data.SpanNode
 import com.thapovan.orion.proto.Span
+import com.thapovan.orion.server.KafkaProducer
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.StreamsConfig
 import org.apache.logging.log4j.LogManager
+import redis.clients.jedis.JedisPool
 import java.util.*
+import redis.clients.jedis.JedisPoolConfig
+import redis.clients.jedis.JedisPubSub
+
 
 class KafkaStream {
 
@@ -79,7 +84,25 @@ class KafkaStream {
 
         val fatTraceObjectStream = streamBuilder.stream<String, ByteArray>("fat-trace-object")
 
-        TraceSummaryBuilder.buildGraph(streamBuilder, fatTraceObjectStream, metaDataObject)
+        val jedisPool = JedisPool(JedisPoolConfig(), "redis")
+
+        val pubsubJedis = jedisPool.resource
+
+        val jedispubsub = Thread(Runnable {
+            pubsubJedis.psubscribe(object: JedisPubSub() {
+                override fun onPMessage(pattern: String?, channel: String?, message: String?) {
+                    if (message != null) {
+                        println("Pushing incomplete trace trigger for traceId $message")
+                        KafkaProducer.pushEmitTraceSummaryTrigger(message)
+                    }
+                }
+            },"__keyevent@*__:expire")
+        })
+        jedispubsub.isDaemon = true
+
+        jedispubsub.start()
+
+        TraceSummaryBuilder.buildGraph(streamBuilder, fatTraceObjectStream, metaDataObject, jedisPool)
 
         kafkaStream = KafkaStreams(streamBuilder.build(), streamConfig)
         kafkaStream?.cleanUp()
@@ -90,6 +113,9 @@ class KafkaStream {
                 val LOG = LogManager.getLogger(this@KafkaStream.javaClass)
                 LOG.info("Kafka stream shutting down since JVM is shutting down")
                 this@KafkaStream.stop()
+                jedispubsub.stop()
+                pubsubJedis.close()
+                jedisPool.close()
                 LOG.info("Kafka stream has been stopped")
             }
         })

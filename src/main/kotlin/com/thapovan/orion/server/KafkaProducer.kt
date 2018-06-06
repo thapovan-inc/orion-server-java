@@ -37,6 +37,7 @@ object KafkaProducer {
     private val LOG = LogManager.getLogger(this.javaClass)
 
     const val REQUEST_TOPIC = "incoming-request"
+    const val POSSIBLE_INCOMPLETE_TRACES = "possible-incomplete-traces"
 
     init {
         val producerPropertiesFile = System.getenv("KAFKA_PRODUCER_PROPERTIES")
@@ -88,7 +89,23 @@ object KafkaProducer {
         val producerRecord = ProducerRecord(REQUEST_TOPIC, partition, key, value)
         producer.send(producerRecord, { recordMetaData: RecordMetadata, exception: Exception? ->
             if (exception != null) {
-                LOG.error("Error when pushing record to kafka broken: ${exception.message}", exception)
+                LOG.error("Error when pushing record to kafka broker: ${exception.message}", exception)
+            } else {
+                LOG.info("Published record. offset: ${recordMetaData.offset()}")
+            }
+        })
+    }
+
+    fun pushEmitTraceSummaryTrigger(traceId: String) {
+        val partition = traceId[0].toInt().rem(4)
+        val timestamp = System.currentTimeMillis()
+        val producerRecord
+                = ProducerRecord(POSSIBLE_INCOMPLETE_TRACES, partition, traceId, ByteArray(1, {
+            _ -> 0
+        }))
+        producer.send(producerRecord, { recordMetaData: RecordMetadata, exception: Exception? ->
+            if (exception != null) {
+                LOG.error("Error when pushing record to kafka broker: ${exception.message}", exception)
             } else {
                 LOG.info("Published record. offset: ${recordMetaData.offset()}")
             }

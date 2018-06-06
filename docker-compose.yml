@@ -37,6 +37,14 @@ services:
       - "29092:29092"
     restart: always
 
+  redis:
+    image: redis
+    volumes:
+      - "./redis.conf:/usr/local/etc/redis/redis.conf"
+    ports:
+      - "6379:6379"
+
+
   orion:
     image: thapovan/orion-server
     depends_on:
