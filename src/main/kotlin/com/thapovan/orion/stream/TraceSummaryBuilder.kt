@@ -17,6 +17,8 @@
 package com.thapovan.orion.stream
 
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonNull
+import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.thapovan.orion.data.MetaDataObject
@@ -84,7 +86,7 @@ object TraceSummaryBuilder {
             }
             .join(
                 traceSummaryTable,
-                { metadataByte: ByteArray, summaryBytes: ByteArray ->
+                { metadataByte: ByteArray?, summaryBytes: ByteArray? ->
                     val metadataObjectValue = if (metadataByte == null || metadataByte.size == 0) {
                         MetaDataObject("", 0, 0, "", "")
                     } else {
@@ -93,7 +95,11 @@ object TraceSummaryBuilder {
                     if (metadataObjectValue.spanId.isBlank()) {
                         summaryBytes
                     }
-                    val metadata = JsonParser().parse(metadataObjectValue.metadata)
+                    val metadata = try {
+                        JsonParser().parse(metadataObjectValue.metadata)
+                    } catch (e: Exception) {
+                        JsonNull.INSTANCE
+                    }
                     val jsonObject = try {
                         metadata.asJsonObject
                     } catch (e: Throwable) {
@@ -102,7 +108,11 @@ object TraceSummaryBuilder {
                     val summary = if (summaryBytes == null || summaryBytes.size == 0) {
                         TraceSummary("")
                     } else {
-                        gson.fromJson<TraceSummary>(String(summaryBytes), traceSummaryType)
+                        try {
+                            gson.fromJson<TraceSummary>(String(summaryBytes), traceSummaryType)
+                        } catch(e: Throwable) {
+                            TraceSummary("")
+                        }
                     }
                     try {
                         if (jsonObject != null) {
@@ -194,8 +204,19 @@ object TraceSummaryBuilder {
             .aggregate({
                 gson.toJson(TraceSummary(""), traceSummaryType).toByteArray()
             },
-                { key: String, value: ByteArray, aggregate: ByteArray ->
-                    val summary = gson.fromJson<TraceSummary>(String(value), traceSummaryType)
+                { key: String, value: ByteArray?, aggregate: ByteArray ->
+                    val summary = if (value != null && !value.isEmpty() ) {
+                        try {
+                            gson.fromJson<TraceSummary>(String(value), traceSummaryType)
+                        } catch (e: Throwable) {
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                    if (summary == null) {
+                        aggregate
+                    }
                     val intermediateSummary = gson.fromJson<TraceSummary>(String(aggregate), traceSummaryType)
                     val traceId = key
                     println("received summary startcount ${summary.start_trace_count} endcount ${summary.end_trace_count}")
