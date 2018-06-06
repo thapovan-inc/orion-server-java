@@ -172,6 +172,14 @@ object TraceSummaryBuilder {
                                     }
                                 }
                             }
+
+                            if (jsonObject.has("device") && jsonObject.getAsJsonPrimitive("device").isJsonObject) {
+                                summary.deviceInfo = jsonObject.getAsJsonObject("device")
+                            }
+
+                            if (jsonObject.has("app") && jsonObject.getAsJsonPrimitive("app").isJsonObject) {
+                                summary.appInfo = jsonObject.getAsJsonObject("app")
+                            }
                         }
                     } catch (t: Throwable) {
 
@@ -234,6 +242,9 @@ object TraceSummaryBuilder {
                         if (intermediateSummary.traceName.isNullOrBlank() && !summary.traceName.isNullOrBlank())
                             summary.traceName
                         else intermediateSummary.traceName
+
+                    val deviceInfo = intermediateSummary.deviceInfo ?: summary.deviceInfo
+                    val appInfo = intermediateSummary.appInfo ?: summary.appInfo
                     val finalSummary = TraceSummary(
                         traceId, startTime, endTime, email, userId, services, traceSummary,
                         country,
@@ -241,7 +252,9 @@ object TraceSummaryBuilder {
                         traceIncomplete = traceIncomplete,
                         start_trace_count = startTraceCount,
                         end_trace_count = endTraceCount,
-                        traceName = traceName
+                        traceName = traceName,
+                        deviceInfo = deviceInfo,
+                        appInfo = appInfo
                     )
                     gson.toJson(finalSummary, traceSummaryType).toByteArray()
                 })

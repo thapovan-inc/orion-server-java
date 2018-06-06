@@ -16,19 +16,22 @@
 
 package com.thapovan.orion.data
 
+import com.google.gson.JsonObject
 import com.google.gson.annotations.Expose
 
 data class TraceSummary(
-    @Expose(serialize = true, deserialize = true)val traceId: String,
-    @Expose(serialize = true, deserialize = true)var startTime: Long = 0,
-    @Expose(serialize = true, deserialize = true)var endTime: Long = 0,
-    @Expose(serialize = true, deserialize = true)var email: String? = null,
-    @Expose(serialize = true, deserialize = true)var userId: String? = null,
-    @Expose(serialize = true, deserialize = true)var serviceNames: MutableList<String> = ArrayList<String>(),
-    @Expose(serialize = true, deserialize = true)var traceEventSummary: MutableMap<String,Int> = HashMap(),
-    @Expose(serialize = true, deserialize = true)var country: String? = null,
-    @Expose(serialize = true, deserialize = true)var ip: String? = null,
+    @Expose(serialize = true, deserialize = true) val traceId: String,
+    @Expose(serialize = true, deserialize = true) var startTime: Long = 0,
+    @Expose(serialize = true, deserialize = true) var endTime: Long = 0,
+    @Expose(serialize = true, deserialize = true) var email: String? = null,
+    @Expose(serialize = true, deserialize = true) var userId: String? = null,
+    @Expose(serialize = true, deserialize = true) var serviceNames: MutableList<String> = ArrayList<String>(),
+    @Expose(serialize = true, deserialize = true) var traceEventSummary: MutableMap<String,Int> = HashMap(),
+    @Expose(serialize = true, deserialize = true) var country: String? = null,
+    @Expose(serialize = true, deserialize = true) var ip: String? = null,
     @Expose(serialize = true, deserialize = true) var start_trace_count: Int = 0,
     @Expose(serialize = true, deserialize = true) var traceIncomplete: Boolean = false,
     @Expose(serialize = true, deserialize = true) var end_trace_count: Int = 0,
-    @Expose(serialize = true, deserialize = true)val traceName: String? = null)
+    @Expose(serialize = true, deserialize = true) val traceName: String? = null,
+    @Expose(serialize = true, deserialize = true) var deviceInfo: JsonObject? = null,
+    @Expose(serialize = true, deserialize = true) var appInfo: JsonObject? = null)
