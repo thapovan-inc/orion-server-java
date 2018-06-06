@@ -215,7 +215,7 @@ object TraceSummaryBuilder {
                         null
                     }
                     if (summary_ == null) {
-                        aggregate
+                        return@aggregate aggregate
                     }
                     val summary = summary_!!
                     val intermediateSummary = gson.fromJson<TraceSummary>(String(aggregate), traceSummaryType)
