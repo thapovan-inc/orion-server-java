@@ -205,7 +205,7 @@ object TraceSummaryBuilder {
                 gson.toJson(TraceSummary(""), traceSummaryType).toByteArray()
             },
                 { key: String, value: ByteArray?, aggregate: ByteArray ->
-                    val summary = if (value != null && !value.isEmpty() ) {
+                    val summary_ = if (value != null && !value.isEmpty() ) {
                         try {
                             gson.fromJson<TraceSummary>(String(value), traceSummaryType)
                         } catch (e: Throwable) {
@@ -214,9 +214,10 @@ object TraceSummaryBuilder {
                     } else {
                         null
                     }
-                    if (summary == null) {
+                    if (summary_ == null) {
                         aggregate
                     }
+                    val summary = summary_!!
                     val intermediateSummary = gson.fromJson<TraceSummary>(String(aggregate), traceSummaryType)
                     val traceId = key
                     println("received summary startcount ${summary.start_trace_count} endcount ${summary.end_trace_count}")
