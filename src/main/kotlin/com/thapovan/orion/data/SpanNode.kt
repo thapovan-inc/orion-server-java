@@ -66,6 +66,30 @@ data class SpanNode(
         children.sort()
     }
 
+    fun mergeWithoutChildren(spanNode: SpanNode): SpanNode {
+        if (this.spanId != spanNode.spanId) {
+            throw IllegalArgumentException("Cannot merge span with id ${spanNode.spanId} with another span with id ${spanNode.spanId} ")
+        }
+        val set = HashSet<LogObject>()
+        set.addAll(events)
+        set.addAll(spanNode.events)
+        val finalList = set.toMutableList()
+        finalList.sortBy { it.eventId }
+        val mergedSpanNode = SpanNode(
+            spanId,
+            serviceName ?: spanNode.serviceName,
+            parentId ?: spanNode.parentId,
+            if (startTime == 0L || (startTime > spanNode.startTime)) spanNode.startTime else startTime,
+            if (endTime == 0L || (endTime < spanNode.endTime)) spanNode.endTime else endTime,
+            events = finalList,
+            traceId = traceId ?: spanNode.traceId,
+            traceName = traceName ?: spanNode.traceName,
+            start_id = if (start_id == 0L) spanNode.start_id else start_id
+        )
+        mergedSpanNode.updateLogSummary()
+        return mergedSpanNode
+    }
+
     fun updateLogSummary() {
 
         var START = 0
@@ -83,23 +107,25 @@ data class SpanNode(
                 "START" -> {
                     if(it.metadata?.isJsonObject == true) {
                         val metaObject = it.metadata?.asJsonObject
-                        if (metaObject.has("orion")) {
-                            val orion = metaObject.get("orion")
-                            if (orion.isJsonObject && orion.asJsonObject.has("signal")) {
-                                val signal = orion.asJsonObject.get("signal").asString
-                                when(signal) {
+                        if (metaObject != null ) {
+                            if (metaObject.has("orion")) {
+                                val orion = metaObject.get("orion")
+                                if (orion.isJsonObject && orion.asJsonObject.has("signal")) {
+                                    val signal = orion.asJsonObject.get("signal").asString
+                                    when (signal) {
+                                        "START_TRACE" -> {
+                                            println("spanId $spanId has START_TRACE signal")
+                                            START_TRACE++
+                                        }
+                                    }
+                                }
+                            } else if (metaObject.has("orion.signal")) {
+                                val signal = metaObject.get("orion.signal").asString
+                                when (signal) {
                                     "START_TRACE" -> {
                                         println("spanId $spanId has START_TRACE signal")
                                         START_TRACE++
                                     }
-                                }
-                            }
-                        } else if (metaObject.has("orion.signal")) {
-                            val signal = metaObject.get("orion.signal").asString
-                            when(signal) {
-                                "START_TRACE" -> {
-                                    println("spanId $spanId has START_TRACE signal")
-                                    START_TRACE++
                                 }
                             }
                         }

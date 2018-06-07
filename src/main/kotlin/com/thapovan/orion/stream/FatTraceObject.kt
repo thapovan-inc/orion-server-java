@@ -8,10 +8,7 @@ import com.thapovan.orion.data.SpanTree
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
-import org.apache.kafka.streams.kstream.JoinWindows
-import org.apache.kafka.streams.kstream.KStream
-import org.apache.kafka.streams.kstream.Materialized
-import org.apache.kafka.streams.kstream.TimeWindows
+import org.apache.kafka.streams.kstream.*
 
 object FatTraceObject {
 
@@ -29,19 +26,19 @@ object FatTraceObject {
             .serializeNulls()
             .create()
 
-        spanLogAggregateStream
-            .join(
+        val intermediate = spanLogAggregateStream
+            .outerJoin(
                 spanStartStop,
-                { spanLogArrayBytes: ByteArray, spanNodeBytes: ByteArray ->
-                    val spanNode = if (spanNodeBytes == null || spanNodeBytes.size == 0) {
-                        SpanNode("")
-                    } else {
-                        gson.fromJson<SpanNode>(String(spanNodeBytes), spanNodeTypeToken)
-                    }
+                { spanLogArrayBytes: ByteArray?, spanNodeBytes: ByteArray? ->
                     val spanLogArray = if (spanLogArrayBytes == null || spanLogArrayBytes.size == 0) {
                         ArrayList()
                     } else {
                         gson.fromJson<MutableList<LogObject>>(String(spanLogArrayBytes), logArrTypeToken)
+                    }
+                    val spanNode = if (spanNodeBytes == null || spanNodeBytes.size == 0) {
+                        SpanNode(spanLogArray.first().spanId)
+                    } else {
+                        gson.fromJson<SpanNode>(String(spanNodeBytes), spanNodeTypeToken)
                     }
                     val set = HashSet<LogObject>()
                     set.addAll(spanLogArray)
@@ -50,22 +47,40 @@ object FatTraceObject {
                     spanNode.events.clear()
                     spanNode.events.addAll(finalList)
                     spanNode.events.sortBy { it.eventId }
+                    spanNode.updateLogSummary()
                     gson.toJson(spanNode, spanNodeTypeToken).toByteArray()
                 },
                 JoinWindows.of(KafkaStream.WINDOW_DURATION_MS)
             )
-            .map { key, value ->
-                val spanId = key.split("_")[1]
-                val spanNode = gson.fromJson<SpanNode>(String(value), spanNodeTypeToken)
-                spanNode.spanId = spanId
-                return@map KeyValue<String, ByteArray>(
-                    key.split("_")[0],
-                    gson.toJson(spanNode, spanNodeTypeToken).toByteArray()
-                )
-            }
+
+        intermediate.map { key, value ->
+            val spanId = key.split("_")[1]
+            val spanNode = gson.fromJson<SpanNode>(String(value), spanNodeTypeToken)
+            spanNode.spanId = spanId
+            val spanTree = SpanTree(spanNode)
+            spanTree.traceId = key.split("_")[0]
+            spanTree.spanMap.clear()
+            spanTree.spanList.add(spanNode)
+            return@map KeyValue<String, ByteArray>(
+                spanTree.traceId,
+                gson.toJson(spanTree, aggTypeToken).toByteArray()
+            )
+        }
             .groupByKey()
-            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
-                .until(2*KafkaStream.WINDOW_DURATION_MS))
+//            .windowedBy(SessionWindows.with(KafkaStream.WINDOW_DURATION_MS).until(KafkaStream.WINDOW_DURATION_MS))
+//        intermediate
+//            .map { key, value ->
+//                val spanId = key.split("_")[1]
+//                val spanNode = gson.fromJson<SpanNode>(String(value), spanNodeTypeToken)
+//                spanNode.spanId = spanId
+//                return@map KeyValue<String, ByteArray>(
+//                    key.split("_")[0],
+//                    gson.toJson(spanNode, spanNodeTypeToken).toByteArray()
+//                )
+//            }
+//            .groupByKey()
+//            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
+//                .until(2*KafkaStream.WINDOW_DURATION_MS))
             .aggregate(
                 {
                     gson.toJson(SpanTree(SpanNode("ROOT", null, null)), aggTypeToken).toByteArray()
@@ -73,136 +88,256 @@ object FatTraceObject {
                 { key, spanNodeBytes, bValueAggregate ->
                     val footPrintTree =
                         gson.fromJson<SpanTree>(String(bValueAggregate), aggTypeToken)
-                    val spanNode = gson.fromJson<SpanNode>(String(spanNodeBytes), spanNodeTypeToken)
-                    val tree = footPrintTree.rootNode
-                    val existingSpanNode: SpanNode? = tree.getIfExists(spanNode)
-                    val traceName: String
-                    val traceId: String
-                    val finalSpanNode: SpanNode
-                    if (existingSpanNode != null) { // -> denotes that we have seen this span already
+                    try {
+                        val spanNode = gson.fromJson<SpanNode>(String(spanNodeBytes), spanNodeTypeToken)
+                        val tree = footPrintTree.rootNode
+                        val existingSpanNode: SpanNode? = tree.getIfExists(spanNode)
+                        val traceName: String
+                        val traceId: String
+                        val finalSpanNode: SpanNode
+                        if (existingSpanNode != null) { // -> denotes that we have seen this span already
 
-                        val set = HashSet<LogObject>()
-                        set.addAll(existingSpanNode.events)
-                        set.addAll(spanNode.events)
-                        val finalList = set.toMutableList()
-                        existingSpanNode.start_id =
-                                if (spanNode.start_id != 0L) spanNode.start_id else existingSpanNode.start_id
-                        existingSpanNode.events.clear()
-                        existingSpanNode.events.addAll(finalList)
-                        existingSpanNode.events.sortBy { it.eventId }
-                        existingSpanNode.updateLogSummary()
+                            val set = HashSet<LogObject>()
+                            set.addAll(existingSpanNode.events)
+                            set.addAll(spanNode.events)
+                            val finalList = set.toMutableList()
+                            existingSpanNode.start_id =
+                                    if (spanNode.start_id != 0L) spanNode.start_id else existingSpanNode.start_id
+                            existingSpanNode.events.clear()
+                            existingSpanNode.events.addAll(finalList)
+                            existingSpanNode.events.sortBy { it.eventId }
+                            existingSpanNode.updateLogSummary()
 
-                        if (existingSpanNode.traceId.isNullOrBlank() && !spanNode.traceId.isNullOrBlank()) {
-                            existingSpanNode.traceId = spanNode.traceId
-                        }
-
-                        if (existingSpanNode.traceName.isNullOrBlank() && !spanNode.traceName.isNullOrBlank()) {
-                            existingSpanNode.traceName = spanNode.traceName
-                        }
-
-                        // lets check if the service name exists. if not present in the existingSpan, and if present
-                        // in the received span, lets update the existingSpan
-                        existingSpanNode.serviceName =
-                                if (existingSpanNode.serviceName.isNullOrEmpty() && !spanNode.serviceName.isNullOrEmpty())
-                                    spanNode.serviceName
-                                else
-                                    existingSpanNode.serviceName
-                        if (existingSpanNode.startTime == 0L && spanNode.startTime != 0L) {
-                            existingSpanNode.startTime = spanNode.startTime
-                        }
-                        if (existingSpanNode.endTime == 0L && spanNode.endTime != 0L) {
-                            existingSpanNode.endTime = spanNode.endTime
-                        }
-
-                        if ((existingSpanNode.parentId.isNullOrEmpty() // -> means that the parent was not defined so far.. so this node resides at the top of the tree
-                                    || existingSpanNode.parentId.equals("ROOT")) // -> means we are still waiting for the parent id to show up
-                            && !spanNode.parentId.isNullOrEmpty()
-                        ) {
-                            // So far we didn't know the parent's ID; now we know who the parent is
-
-                            // Lets search the tree if the parent is already present
-                            val parentSpan = tree.getIfExists(SpanNode(spanNode.parentId!!, null, null))
-                            if (parentSpan != null) { // -> the parent is already present in the tree
-                                parentSpan.addChild(existingSpanNode) // -> add existingSpan to the parent
-                                tree.children.remove(existingSpanNode)
-                                footPrintTree.registerSpan(parentSpan)
-                            } else {
-                                // We haven't received any info about the parent span, we only know the parent's ID
-                                // Lets create place holder for this new parent
-                                val newParentSpan = SpanNode(spanNode.parentId!!, null, null)
-                                newParentSpan.addChild(existingSpanNode)
-                                tree.addChild(newParentSpan)
-                                footPrintTree.registerSpan(newParentSpan)
+                            if (existingSpanNode.traceId.isNullOrBlank() && !spanNode.traceId.isNullOrBlank()) {
+                                existingSpanNode.traceId = spanNode.traceId
                             }
 
-                            tree.children.remove(existingSpanNode) // -> remove exisitingSpan from top of the tree
-                        }
-                        footPrintTree.registerSpan(existingSpanNode)
-                        println("SpanID ${existingSpanNode.spanId} trace name ${existingSpanNode.traceName}")
-                        traceName = existingSpanNode?.traceName ?: ""
-                        traceId = existingSpanNode?.traceId ?: ""
-                        finalSpanNode = existingSpanNode
-                    } else {
-                        // This is the first time we are seeing this span
-                        spanNode.updateLogSummary()
-                        // Check if the parent is present
-                        if (!spanNode.parentId.isNullOrEmpty()) { // -> parent id is available
-                            val parentSpan = tree.getIfExists(SpanNode(spanNode.parentId!!))
-                            if (parentSpan != null) {
-                                parentSpan.addChild(spanNode)
-                                footPrintTree.registerSpan(parentSpan)
-                                footPrintTree.registerSpan(spanNode)
-                            } else {
-                                val newParentSpan = SpanNode(spanNode.parentId!!)
-                                newParentSpan.addChild(spanNode)
-                                tree.addChild(newParentSpan)
-                                footPrintTree.registerSpan(newParentSpan)
-                                footPrintTree.registerSpan(spanNode)
+                            if (existingSpanNode.traceName.isNullOrBlank() && !spanNode.traceName.isNullOrBlank()) {
+                                existingSpanNode.traceName = spanNode.traceName
                             }
+
+                            // lets check if the service name exists. if not present in the existingSpan, and if present
+                            // in the received span, lets update the existingSpan
+                            existingSpanNode.serviceName =
+                                    if (existingSpanNode.serviceName.isNullOrEmpty() && !spanNode.serviceName.isNullOrEmpty())
+                                        spanNode.serviceName
+                                    else
+                                        existingSpanNode.serviceName
+                            if (existingSpanNode.startTime == 0L && spanNode.startTime != 0L) {
+                                existingSpanNode.startTime = spanNode.startTime
+                            }
+                            if (existingSpanNode.endTime == 0L && spanNode.endTime != 0L) {
+                                existingSpanNode.endTime = spanNode.endTime
+                            }
+
+                            if ((existingSpanNode.parentId.isNullOrEmpty() // -> means that the parent was not defined so far.. so this node resides at the top of the tree
+                                        || existingSpanNode.parentId.equals("ROOT")) // -> means we are still waiting for the parent id to show up
+                                && !spanNode.parentId.isNullOrEmpty()
+                            ) {
+                                // So far we didn't know the parent's ID; now we know who the parent is
+
+                                // Lets search the tree if the parent is already present
+                                val parentSpan = tree.getIfExists(SpanNode(spanNode.parentId!!, null, null))
+                                if (parentSpan != null) { // -> the parent is already present in the tree
+                                    parentSpan.addChild(existingSpanNode) // -> add existingSpan to the parent
+                                    tree.children.remove(existingSpanNode)
+                                    footPrintTree.registerSpan(parentSpan)
+                                } else {
+                                    // We haven't received any info about the parent span, we only know the parent's ID
+                                    // Lets create place holder for this new parent
+                                    val newParentSpan = SpanNode(spanNode.parentId!!, null, null)
+                                    newParentSpan.addChild(existingSpanNode)
+                                    tree.addChild(newParentSpan)
+                                    footPrintTree.registerSpan(newParentSpan)
+                                }
+
+                                tree.children.remove(existingSpanNode) // -> remove exisitingSpan from top of the tree
+                            }
+                            footPrintTree.registerSpan(existingSpanNode)
+                            println("SpanID ${existingSpanNode.spanId} trace name ${existingSpanNode.traceName}")
+                            traceName = existingSpanNode?.traceName ?: ""
+                            traceId = existingSpanNode?.traceId ?: ""
+                            finalSpanNode = existingSpanNode
                         } else {
-                            // parent not present. Add this span to the top of the tree
-                            tree.addChild(spanNode)
-                            footPrintTree.registerSpan(spanNode)
+                            // This is the first time we are seeing this span
+                            spanNode.updateLogSummary()
+                            // Check if the parent is present
+                            if (!spanNode.parentId.isNullOrEmpty()) { // -> parent id is available
+                                val parentSpan = tree.getIfExists(SpanNode(spanNode.parentId!!))
+                                if (parentSpan != null) {
+                                    parentSpan.addChild(spanNode)
+                                    footPrintTree.registerSpan(parentSpan)
+                                    footPrintTree.registerSpan(spanNode)
+                                } else {
+                                    val newParentSpan = SpanNode(spanNode.parentId!!)
+                                    newParentSpan.addChild(spanNode)
+                                    tree.addChild(newParentSpan)
+                                    footPrintTree.registerSpan(newParentSpan)
+                                    footPrintTree.registerSpan(spanNode)
+                                }
+                            } else {
+                                // parent not present. Add this span to the top of the tree
+                                tree.addChild(spanNode)
+                                footPrintTree.registerSpan(spanNode)
+                            }
+                            println("SpanID ${spanNode.spanId} trace name ${spanNode.traceName}")
+                            traceName = spanNode?.traceName ?: ""
+                            traceId = spanNode?.traceId ?: ""
+                            finalSpanNode = spanNode
                         }
-                        println("SpanID ${spanNode.spanId} trace name ${spanNode.traceName}")
-                        traceName = spanNode?.traceName ?: ""
-                        traceId = spanNode?.traceId ?: ""
-                        finalSpanNode = spanNode
-                    }
-                    val startTraceCount = finalSpanNode.logSummary["START_TRACE"] ?: 0
-                    if (startTraceCount > 0) {
-                        footPrintTree.startTime = when {
-                            footPrintTree.startTime == 0L -> {
-                                finalSpanNode.startTime
-                            }
-                            footPrintTree.startTime > finalSpanNode.startTime -> {
-                                finalSpanNode.startTime
-                            }
-                            else -> {
-                                footPrintTree.startTime
+                        val startTraceCount = finalSpanNode.logSummary["START_TRACE"] ?: 0
+                        if (startTraceCount > 0) {
+                            footPrintTree.startTime = when {
+                                footPrintTree.startTime == 0L -> {
+                                    finalSpanNode.startTime
+                                }
+                                footPrintTree.startTime > finalSpanNode.startTime -> {
+                                    finalSpanNode.startTime
+                                }
+                                else -> {
+                                    footPrintTree.startTime
+                                }
                             }
                         }
-                    }
 
-                    val stopTraceCount = finalSpanNode.logSummary["END_TRACE"] ?: 0
-                    if (stopTraceCount > 0) {
-                        footPrintTree.endTime = when {
-                            footPrintTree.endTime < finalSpanNode.endTime -> {
-                                finalSpanNode.endTime
-                            }
-                            else -> {
-                                footPrintTree.endTime
+                        val stopTraceCount = finalSpanNode.logSummary["END_TRACE"] ?: 0
+                        if (stopTraceCount > 0) {
+                            footPrintTree.endTime = when {
+                                footPrintTree.endTime < finalSpanNode.endTime -> {
+                                    finalSpanNode.endTime
+                                }
+                                else -> {
+                                    footPrintTree.endTime
+                                }
                             }
                         }
+                        footPrintTree.traceId =
+                                if (footPrintTree?.traceId.isNullOrBlank()) traceId else footPrintTree?.traceId
+                        footPrintTree.traceName =
+                                if (footPrintTree?.traceName.isNullOrBlank()) traceName else footPrintTree?.traceName
+                        footPrintTree.computeTraceSummary()
+                        gson.toJson(footPrintTree, aggTypeToken).toByteArray()
+                    } catch (e: Exception) {
+                        bValueAggregate
                     }
-                    footPrintTree.traceId =
-                            if (footPrintTree?.traceId.isNullOrBlank()) traceId else footPrintTree?.traceId
-                    footPrintTree.traceName =
-                            if (footPrintTree?.traceName.isNullOrBlank()) traceName else footPrintTree?.traceName
-                    footPrintTree.computeTraceSummary()
-                    gson.toJson(footPrintTree, aggTypeToken).toByteArray()
-                },
-                Materialized.with(Serdes.String(), Serdes.ByteArray())
+                }
+//                ,
+//                { traceKey, value1, value2 ->
+//                    println("merging trees")
+//                    val tree1 = gson.fromJson<SpanTree>(String(value1),aggTypeToken)
+//                    val tree2 = gson.fromJson<SpanTree>(String(value2),aggTypeToken)
+//                    val spanMap: MutableMap<String,SpanNode> = HashMap<String,SpanNode>()
+//                    tree2.spanList.forEach {
+//                        if (it.serviceName == "ROOT")
+//                            return@forEach
+//                        spanMap[it.spanId] = it
+//                    }
+//                    tree1.spanList.forEach {
+//                        if (it.serviceName == "ROOT")
+//                            return@forEach
+//                        if(spanMap.contains(it.spanId)) {
+//                            val mergedNode = it.mergeWithoutChildren(spanMap[it.spanId]!!)
+//                            spanMap[it.spanId] = mergedNode
+//                        } else {
+//                            spanMap[it.spanId] = it
+//                        }
+//                    }
+//                    val newTree = SpanTree(SpanNode("ROOT", null, null))
+//                    spanMap.forEach { t, u ->
+//                        val footPrintTree = newTree
+//                        val spanNode = u
+//                        val tree = footPrintTree.rootNode
+//                        val existingSpanNode: SpanNode? = tree.getIfExists(spanNode)
+//                        val traceName: String
+//                        val traceId: String
+//                        if (existingSpanNode != null) { // -> denotes that we have seen this span already
+//
+//                            if ((existingSpanNode.parentId.isNullOrEmpty() // -> means that the parent was not defined so far.. so this node resides at the top of the tree
+//                                        || existingSpanNode.parentId.equals("ROOT")) // -> means we are still waiting for the parent id to show up
+//                                && !spanNode.parentId.isNullOrEmpty()
+//                            ) {
+//                                // So far we didn't know the parent's ID; now we know who the parent is
+//
+//                                // Lets search the tree if the parent is already present
+//                                val parentSpan = tree.getIfExists(SpanNode(spanNode.parentId!!, null, null))
+//                                if (parentSpan != null) { // -> the parent is already present in the tree
+//                                    parentSpan.addChild(existingSpanNode) // -> add existingSpan to the parent
+//                                    tree.children.remove(existingSpanNode)
+//                                    footPrintTree.registerSpan(parentSpan)
+//                                } else {
+//                                    // We haven't received any info about the parent span, we only know the parent's ID
+//                                    // Lets create place holder for this new parent
+//                                    val newParentSpan = spanMap[spanNode.parentId!!]?.copy(parentId=null) ?: SpanNode(spanNode.parentId!!, null, null)
+//                                    newParentSpan.addChild(existingSpanNode)
+//                                    tree.addChild(newParentSpan)
+//                                    footPrintTree.registerSpan(newParentSpan)
+//                                }
+//
+//                                tree.children.remove(existingSpanNode) // -> remove exisitingSpan from top of the tree
+//                            }
+//                            footPrintTree.registerSpan(existingSpanNode)
+//                            println("SpanID ${existingSpanNode.spanId} trace name ${existingSpanNode.traceName}")
+//                            traceName = existingSpanNode?.traceName ?: ""
+//                            traceId = existingSpanNode?.traceId ?: ""
+//                        } else {
+//                            // This is the first time we are seeing this span
+//                            // Check if the parent is present
+//                            if (!spanNode.parentId.isNullOrEmpty()) { // -> parent id is available
+//                                val parentSpan = tree.getIfExists(SpanNode(spanNode.parentId!!))
+//                                if (parentSpan != null) {
+//                                    parentSpan.addChild(spanNode)
+//                                    footPrintTree.registerSpan(parentSpan)
+//                                    footPrintTree.registerSpan(spanNode)
+//                                } else {
+//                                    val newParentSpan = spanMap[spanNode.parentId!!]?.copy(parentId=null) ?: SpanNode(spanNode.parentId!!, null, null)
+//                                    newParentSpan.addChild(spanNode)
+//                                    tree.addChild(newParentSpan)
+//                                    footPrintTree.registerSpan(newParentSpan)
+//                                    footPrintTree.registerSpan(spanNode)
+//                                }
+//                            } else {
+//                                // parent not present. Add this span to the top of the tree
+//                                tree.addChild(spanNode)
+//                                footPrintTree.registerSpan(spanNode)
+//                            }
+//                            println("SpanID ${spanNode.spanId} trace name ${spanNode.traceName}")
+//                            traceName = spanNode?.traceName ?: ""
+//                            traceId = spanNode?.traceId ?: ""
+//                        }
+//                        val startTraceCount = spanNode.logSummary["START_TRACE"] ?: 0
+//                        if (startTraceCount > 0) {
+//                            footPrintTree.startTime = when {
+//                                footPrintTree.startTime == 0L -> {
+//                                    spanNode.startTime
+//                                }
+//                                footPrintTree.startTime > spanNode.startTime -> {
+//                                    spanNode.startTime
+//                                }
+//                                else -> {
+//                                    footPrintTree.startTime
+//                                }
+//                            }
+//                        }
+//
+//                        val stopTraceCount = spanNode.logSummary["END_TRACE"] ?: 0
+//                        if (stopTraceCount > 0) {
+//                            footPrintTree.endTime = when {
+//                                footPrintTree.endTime < spanNode.endTime -> {
+//                                    spanNode.endTime
+//                                }
+//                                else -> {
+//                                    footPrintTree.endTime
+//                                }
+//                            }
+//                        }
+//                        footPrintTree.traceId =
+//                                if (footPrintTree?.traceId.isNullOrBlank()) traceId else footPrintTree?.traceId
+//                        footPrintTree.traceName =
+//                                if (footPrintTree?.traceName.isNullOrBlank()) traceName else footPrintTree?.traceName
+//                    }
+//                    newTree.computeTraceSummary()
+//                    gson.toJson(newTree,aggTypeToken).toByteArray()
+//                }
             )
             .mapValues {
                 val footPrintTree = gson.fromJson<SpanTree>(String(it), aggTypeToken)
@@ -220,7 +355,7 @@ object FatTraceObject {
                 gson.toJson(footPrintTree, aggTypeToken).toByteArray()
             }
             .toStream()
-            .selectKey { key, value -> key.key() }
+//            .selectKey { key, value -> key.key() }
             .to("fat-trace-object")
     }
 }
