@@ -75,6 +75,8 @@ object FatTraceObject {
                     val spanNode = gson.fromJson<SpanNode>(String(spanNodeBytes), spanNodeTypeToken)
                     val tree = footPrintTree.rootNode
                     val existingSpanNode: SpanNode? = tree.getIfExists(spanNode)
+                    val traceName: String
+                    val traceId: String
                     if (existingSpanNode != null) { // -> denotes that we have seen this span already
 
                         val set = HashSet<LogObject>()
@@ -134,6 +136,9 @@ object FatTraceObject {
                             tree.children.remove(existingSpanNode) // -> remove exisitingSpan from top of the tree
                         }
                         footPrintTree.registerSpan(existingSpanNode)
+                        println("SpanID ${existingSpanNode.spanId} trace name ${existingSpanNode.traceName}")
+                        traceName = existingSpanNode?.traceName ?: ""
+                        traceId = existingSpanNode?.traceId ?: ""
                     } else {
                         // This is the first time we are seeing this span
                         spanNode.updateLogSummary()
@@ -156,9 +161,12 @@ object FatTraceObject {
                             tree.addChild(spanNode)
                             footPrintTree.registerSpan(spanNode)
                         }
+                        println("SpanID ${spanNode.spanId} trace name ${spanNode.traceName}")
+                        traceName = spanNode?.traceName ?: ""
+                        traceId = spanNode?.traceId ?: ""
                     }
-                    footPrintTree.traceId = if (existingSpanNode?.traceId.isNullOrBlank()) spanNode?.traceId else existingSpanNode?.traceId
-                    footPrintTree.traceName = if (existingSpanNode?.traceName.isNullOrBlank()) spanNode.traceName else existingSpanNode?.traceName
+                    footPrintTree.traceId = if (footPrintTree?.traceId.isNullOrBlank()) traceId else footPrintTree?.traceId
+                    footPrintTree.traceName = if (footPrintTree?.traceName.isNullOrBlank()) traceName else footPrintTree?.traceName
                     footPrintTree.computeTraceSummary()
                     gson.toJson(footPrintTree, aggTypeToken).toByteArray()
                 },
