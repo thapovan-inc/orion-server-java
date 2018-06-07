@@ -45,7 +45,9 @@ class FootprintBuilder {
                 .groupBy { key, value ->
                     key.split("_")[0]
                 }
-                .windowedBy(TimeWindows.of(WINDOW_DURATION_MS))
+                .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
+                    .advanceBy(KafkaStream.WINDOW_DURATION_MS)
+                    .until(2*KafkaStream.WINDOW_DURATION_MS))
                 .aggregate(
                     {
                         gson.toJson(SpanTree(SpanNode("ROOT", null, null)), aggTypeToken).toByteArray()

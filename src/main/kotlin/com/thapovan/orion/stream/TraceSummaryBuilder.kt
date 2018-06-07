@@ -200,7 +200,9 @@ object TraceSummaryBuilder {
                 JoinWindows.of(KafkaStream.WINDOW_DURATION_MS)
             )
             .groupByKey()
-            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS))
+            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
+                .advanceBy(KafkaStream.WINDOW_DURATION_MS)
+                .until(2*KafkaStream.WINDOW_DURATION_MS))
             .aggregate({
                 gson.toJson(TraceSummary(""), traceSummaryType).toByteArray()
             },
