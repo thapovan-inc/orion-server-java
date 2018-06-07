@@ -61,8 +61,8 @@ object TraceSummaryBuilder {
                 var startTime = 0L
                 var endTime = 0L
                 if (spanTree.rootNode.children.size > 0) {
-                    startTime = spanTree.startTime
-                    endTime = spanTree.endTime
+                    startTime = spanTree.rootNode.children.first().startTime
+                    endTime = spanTree.rootNode.children.last().endTime
                 }
                 val traceId = key
                 val traceSummary = TraceSummary(
