@@ -75,10 +75,31 @@ data class SpanNode(
         var WARN = 0
         var ERROR = 0
         var CRITICAL = 0
+        var START_TRACE = 0
+        var END_TRACE = 0
 
         events.forEach {
             when (it.logLevel) {
-                "START" -> START++
+                "START" -> {
+                    if(it.metadata?.isJsonObject == true) {
+                        val metaObject = it.metadata?.asJsonObject
+                        if (metaObject.has("orion")) {
+                            val orion = metaObject.get("orion")
+                            if (orion.isJsonObject && orion.asJsonObject.has("signal")) {
+                                val signal = orion.asJsonObject.get("signal").asString
+                                when(signal) {
+                                    "START_TRACE" -> {
+                                        START_TRACE++
+                                    }
+                                    "END_TRACE" -> {
+                                        END_TRACE++
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    START++
+                }
                 "STOP" -> STOP++
                 "DEBUG" -> DEBUG++
                 "INFO" -> INFO++
@@ -99,6 +120,12 @@ data class SpanNode(
         logSummary["WARN"] = WARN
         logSummary["ERROR"] = ERROR
         logSummary["CRITICAL"] = CRITICAL
+        if (START_TRACE > 0) {
+            logSummary["START_TRACE"] = START_TRACE
+        }
+        if (END_TRACE > 0) {
+            logSummary["END_TRACE"] = END_TRACE
+        }
 
     }
 }

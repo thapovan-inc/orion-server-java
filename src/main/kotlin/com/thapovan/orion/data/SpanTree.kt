@@ -41,6 +41,12 @@ class SpanTree {
     @Expose(serialize = true, deserialize = true)
     var spanList: MutableList<SpanNode> = ArrayList()
 
+    @Expose(serialize = true, deserialize = true)
+    var startTime = 0L
+
+    @Expose(serialize = true, deserialize = true)
+    var endTime = 0L
+
     constructor(rootNode: SpanNode) {
         this.rootNode = rootNode
         this.spanMap["ROOT"] = rootNode

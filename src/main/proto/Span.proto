@@ -37,4 +37,5 @@ message Span {
     string parent_span_id = 9;
 
     uint64 internal_span_ref_number = 10000;
+    bytes internal_meta = 100001; 
 }

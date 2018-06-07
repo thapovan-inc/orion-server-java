@@ -13,10 +13,11 @@ Each of the event carries optional `metadata` and mandatory `event_id`
 ```protobuf
 message Trace {
     string trace_id = 1;
+    string trace_name = 2;
 }
 ```
 
-A trace is denoted by a `trace_id` which must be a [UUID v4](https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)).
+A trace is denoted by a `trace_id` which must be a [UUID v4](https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)). Additionally the trace can be tagged with a `trace_name`.
 
 A trace by itself is of little help. Hence the `Trace` context is always represented and reported with a `Span` context. 
 

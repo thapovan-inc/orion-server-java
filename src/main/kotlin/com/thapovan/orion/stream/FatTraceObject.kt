@@ -77,6 +77,7 @@ object FatTraceObject {
                     val existingSpanNode: SpanNode? = tree.getIfExists(spanNode)
                     val traceName: String
                     val traceId: String
+                    val finalSpanNode: SpanNode
                     if (existingSpanNode != null) { // -> denotes that we have seen this span already
 
                         val set = HashSet<LogObject>()
@@ -139,6 +140,7 @@ object FatTraceObject {
                         println("SpanID ${existingSpanNode.spanId} trace name ${existingSpanNode.traceName}")
                         traceName = existingSpanNode?.traceName ?: ""
                         traceId = existingSpanNode?.traceId ?: ""
+                        finalSpanNode = existingSpanNode
                     } else {
                         // This is the first time we are seeing this span
                         spanNode.updateLogSummary()
@@ -164,9 +166,38 @@ object FatTraceObject {
                         println("SpanID ${spanNode.spanId} trace name ${spanNode.traceName}")
                         traceName = spanNode?.traceName ?: ""
                         traceId = spanNode?.traceId ?: ""
+                        finalSpanNode = spanNode
                     }
-                    footPrintTree.traceId = if (footPrintTree?.traceId.isNullOrBlank()) traceId else footPrintTree?.traceId
-                    footPrintTree.traceName = if (footPrintTree?.traceName.isNullOrBlank()) traceName else footPrintTree?.traceName
+                    val startTraceCount = finalSpanNode.logSummary["START_TRACE"] ?: 0
+                    if (startTraceCount > 0) {
+                        footPrintTree.startTime = when {
+                            footPrintTree.startTime == 0L -> {
+                                finalSpanNode.startTime
+                            }
+                            footPrintTree.startTime > finalSpanNode.startTime -> {
+                                finalSpanNode.startTime
+                            }
+                            else -> {
+                                footPrintTree.startTime
+                            }
+                        }
+                    }
+
+                    val stopTraceCount = finalSpanNode.logSummary["STOP_TRACE"] ?: 0
+                    if (stopTraceCount > 0) {
+                        footPrintTree.endTime = when {
+                            footPrintTree.endTime < finalSpanNode.endTime -> {
+                                finalSpanNode.endTime
+                            }
+                            else -> {
+                                footPrintTree.endTime
+                            }
+                        }
+                    }
+                    footPrintTree.traceId =
+                            if (footPrintTree?.traceId.isNullOrBlank()) traceId else footPrintTree?.traceId
+                    footPrintTree.traceName =
+                            if (footPrintTree?.traceName.isNullOrBlank()) traceName else footPrintTree?.traceName
                     footPrintTree.computeTraceSummary()
                     gson.toJson(footPrintTree, aggTypeToken).toByteArray()
                 },
