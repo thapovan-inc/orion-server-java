@@ -89,11 +89,25 @@ data class SpanNode(
                                 val signal = orion.asJsonObject.get("signal").asString
                                 when(signal) {
                                     "START_TRACE" -> {
+                                        println("spanId ${spanId} has START_TRACE signal")
                                         START_TRACE++
                                     }
                                     "END_TRACE" -> {
+                                        println("spanId ${spanId} has END_TRACE signal")
                                         END_TRACE++
                                     }
+                                }
+                            }
+                        } else if (metaObject.has("orion.signal")) {
+                            val signal = metaObject.get("orion.signal").asString
+                            when(signal) {
+                                "START_TRACE" -> {
+                                    println("spanId ${spanId} has START_TRACE signal")
+                                    START_TRACE++
+                                }
+                                "END_TRACE" -> {
+                                    println("spanId ${spanId} has END_TRACE signal")
+                                    END_TRACE++
                                 }
                             }
                         }
