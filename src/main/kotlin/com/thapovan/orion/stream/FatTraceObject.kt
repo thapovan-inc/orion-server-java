@@ -183,7 +183,7 @@ object FatTraceObject {
                         }
                     }
 
-                    val stopTraceCount = finalSpanNode.logSummary["STOP_TRACE"] ?: 0
+                    val stopTraceCount = finalSpanNode.logSummary["END_TRACE"] ?: 0
                     if (stopTraceCount > 0) {
                         footPrintTree.endTime = when {
                             footPrintTree.endTime < finalSpanNode.endTime -> {
