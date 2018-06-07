@@ -51,48 +51,51 @@ object SpanLifecycleProcessor {
                     val spanNode =
                         gson.fromJson<SpanNode>(String(bValueAggregate), aggTypeToken)
                     val span = Span.parseFrom(spanArr)
-                    val newSpan = if (span.hasStartEvent()) {
-                        SpanNode(
+                    val newSpan = when {
+                        span.hasStartEvent() -> {
+                            val meta = span.startEvent.jsonString
+                            SpanNode(
+                                span.spanId,
+                                if (span.serviceName.isNullOrEmpty()) spanNode.serviceName else span.serviceName,
+                                if (span.parentSpanId.isNullOrEmpty()) spanNode.parentId else span.parentSpanId,
+                                span.timestamp,
+                                spanNode.endTime,
+                                traceId = spanNode.traceId ?: span.traceContext.traceId,
+                                traceName = spanNode.traceName ?: span.traceContext.traceName,
+                                start_id = span.internalSpanRefNumber
+                            )
+                        }
+                        span.hasEndEvent() -> SpanNode(
                             span.spanId,
-                            if (span.serviceName.isNullOrEmpty() && span.serviceName.isNullOrBlank()) spanNode.serviceName else span.serviceName,
-                            if (span.parentSpanId.isNullOrEmpty() && span.parentSpanId.isNullOrBlank()) spanNode.parentId else span.parentSpanId,
-                            span.timestamp,
-                            spanNode.endTime,
-                            traceId = span.traceContext.traceId,
-                            traceName = span.traceContext.traceName,
-                            start_id = span.internalSpanRefNumber
-                        )
-                    } else if (span.hasEndEvent()) {
-                        SpanNode(
-                            span.spanId,
-                            if (span.serviceName.isNullOrEmpty() && span.serviceName.isNullOrBlank()) spanNode.serviceName else span.serviceName,
-                            if (span.parentSpanId.isNullOrEmpty() && span.parentSpanId.isNullOrBlank()) spanNode.parentId else span.parentSpanId,
+                            if (span.serviceName.isNullOrEmpty()) spanNode.serviceName else span.serviceName,
+                            if (span.parentSpanId.isNullOrEmpty()) spanNode.parentId else span.parentSpanId,
                             spanNode.startTime,
                             span.timestamp,
                             traceId = spanNode.traceId ?: span.traceContext.traceId,
                             traceName = spanNode.traceName ?: span.traceContext.traceName,
                             start_id = spanNode.start_id
                         )
-                    } else {
-                        if (!span.serviceName.isNullOrEmpty() && span.serviceName.isNullOrBlank()) {
-                            spanNode.serviceName = span.serviceName
+                        else -> {
+                            if (!span.serviceName.isNullOrEmpty() && spanNode.serviceName.isNullOrBlank()) {
+                                spanNode.serviceName = span.serviceName
+                            }
+                            if (!span.parentSpanId.isNullOrEmpty() && spanNode.parentId.isNullOrBlank()) {
+                                spanNode.parentId = span.parentSpanId
+                            }
+                            if (spanNode.startTime == 0L || (spanNode.startTime > span.timestamp)) {
+                                spanNode.startTime = span.timestamp
+                            }
+                            if (spanNode.endTime == 0L || (spanNode.endTime < span.timestamp)) {
+                                spanNode.endTime = span.timestamp
+                            }
+                            if (spanNode.traceId.isNullOrBlank()) {
+                                spanNode.traceId = span.traceContext.traceId
+                            }
+                            if (spanNode.traceName.isNullOrBlank()) {
+                                spanNode.traceName = span.traceContext.traceName
+                            }
+                            spanNode
                         }
-                        if (!span.parentSpanId.isNullOrEmpty() && span.parentSpanId.isNullOrBlank()) {
-                            spanNode.parentId = span.parentSpanId
-                        }
-                        if (spanNode.startTime == 0L || (spanNode.startTime > span.timestamp)) {
-                            spanNode.startTime = span.timestamp
-                        }
-                        if (spanNode.endTime == 0L || (spanNode.endTime < span.timestamp)) {
-                            spanNode.endTime = span.timestamp
-                        }
-                        if (spanNode.traceId.isNullOrBlank()) {
-                            spanNode.traceId = span.traceContext.traceId
-                        }
-                        if (spanNode.traceName.isNullOrBlank()) {
-                            spanNode.traceName = span.traceContext.traceName
-                        }
-                        spanNode
                     }
                     gson.toJson(newSpan, aggTypeToken).toByteArray()
                 },
