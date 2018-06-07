@@ -6,6 +6,8 @@ import com.thapovan.orion.data.LogObject
 import com.thapovan.orion.data.MetaDataObject
 import com.thapovan.orion.data.SpanNode
 import com.thapovan.orion.proto.Span
+import com.thapovan.orion.util.TraceIdPartitioner
+import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.KafkaStreams
 import org.apache.kafka.streams.StreamsBuilder
@@ -26,6 +28,7 @@ class KafkaStream {
         }
         streamConfig[StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG] = Serdes.String()::class.java.name
         streamConfig[StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG] = Serdes.ByteArray()::class.java.name
+        streamConfig[ProducerConfig.PARTITIONER_CLASS_CONFIG] = TraceIdPartitioner::class.java.name
 
         val streamBuilder = StreamsBuilder()
 
