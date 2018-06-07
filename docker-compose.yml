@@ -37,12 +37,30 @@ services:
       - "29092:29092"
     restart: always
 
-  orion:
+  orion-grpc:
     image: thapovan/orion-server
     depends_on:
       - zookeeper
       - kafka
     ports:
       - "20691:20691"
+    restart: always
+    command: ["/opt/orion/bin/orion-server","TracerGrpc"]
+
+  orion-rest:
+    image: thapovan/orion-server
+    depends_on:
+      - zookeeper
+      - kafka
+    ports:
       - "9017:9017"
     restart: always
+    command: ["/opt/orion/bin/orion-server","TracerREST"]
+
+  orion-streams:
+    image: thapovan/orion-server
+    depends_on:
+      - zookeeper
+      - kafka
+    restart: always
+    command: ["/opt/orion/bin/orion-server","KafkaStreams"]
