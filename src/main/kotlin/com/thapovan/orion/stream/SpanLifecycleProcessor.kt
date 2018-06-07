@@ -42,7 +42,7 @@ object SpanLifecycleProcessor {
                 val parts = key.split("_")
                 return@groupBy "${parts[0]}_${parts[1]}"
             }
-            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS).advanceBy(KafkaStream.WINDOW_DURATION_MS))
+            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS).advanceBy(KafkaStream.WINDOW_SLIDE_DURATION_MS))
             .aggregate(
                 {
                     gson.toJson(SpanNode(""), aggTypeToken).toByteArray()

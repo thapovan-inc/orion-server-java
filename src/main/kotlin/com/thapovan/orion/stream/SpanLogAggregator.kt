@@ -101,7 +101,7 @@ object SpanLogAggregator {
         val logArrStream = logObjectStream
             .groupByKey()
             .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
-                .advanceBy(KafkaStream.WINDOW_DURATION_MS)
+                .advanceBy(KafkaStream.WINDOW_SLIDE_DURATION_MS)
                 .until(2*KafkaStream.WINDOW_DURATION_MS))
             .aggregate(
                 {
@@ -151,7 +151,7 @@ object SpanLogAggregator {
             )
             .groupByKey()
             .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
-                .advanceBy(KafkaStream.WINDOW_DURATION_MS)
+                .advanceBy(KafkaStream.WINDOW_SLIDE_DURATION_MS)
                 .until(2*KafkaStream.WINDOW_DURATION_MS))
             .aggregate(
                 {

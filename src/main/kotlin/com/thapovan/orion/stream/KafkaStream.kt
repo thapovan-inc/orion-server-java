@@ -105,5 +105,6 @@ class KafkaStream {
     companion object {
         //TODO: Must be configurable
         const val WINDOW_DURATION_MS = 5L * 60L * 1000L // 5 mins
+        const val WINDOW_SLIDE_DURATION_MS = 1000L // 1 min
     }
 }

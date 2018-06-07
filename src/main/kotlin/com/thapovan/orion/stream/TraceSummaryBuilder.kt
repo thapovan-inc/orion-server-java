@@ -18,7 +18,6 @@ package com.thapovan.orion.stream
 
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonNull
-import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import com.thapovan.orion.data.MetaDataObject
@@ -201,7 +200,7 @@ object TraceSummaryBuilder {
             )
             .groupByKey()
             .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
-                .advanceBy(KafkaStream.WINDOW_DURATION_MS)
+                .advanceBy(KafkaStream.WINDOW_SLIDE_DURATION_MS)
                 .until(2*KafkaStream.WINDOW_DURATION_MS))
             .aggregate({
                 gson.toJson(TraceSummary(""), traceSummaryType).toByteArray()

@@ -7,7 +7,6 @@ import com.google.protobuf.util.JsonFormat
 import com.thapovan.orion.data.SpanNode
 import com.thapovan.orion.data.SpanTree
 import com.thapovan.orion.proto.Span
-import com.thapovan.orion.stream.KafkaStream.Companion.WINDOW_DURATION_MS
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.KStream
@@ -46,7 +45,7 @@ class FootprintBuilder {
                     key.split("_")[0]
                 }
                 .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
-                    .advanceBy(KafkaStream.WINDOW_DURATION_MS)
+                    .advanceBy(KafkaStream.WINDOW_SLIDE_DURATION_MS)
                     .until(2*KafkaStream.WINDOW_DURATION_MS))
                 .aggregate(
                     {
