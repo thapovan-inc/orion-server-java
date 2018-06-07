@@ -157,8 +157,8 @@ object FatTraceObject {
                             footPrintTree.registerSpan(spanNode)
                         }
                     }
-                    footPrintTree.traceId = existingSpanNode?.traceId ?: spanNode?.traceId
-                    footPrintTree.traceName = existingSpanNode?.traceName ?: spanNode?.traceName
+                    footPrintTree.traceId = if (existingSpanNode?.traceId.isNullOrBlank()) spanNode?.traceId else existingSpanNode?.traceId
+                    footPrintTree.traceName = if (existingSpanNode?.traceName.isNullOrBlank()) spanNode.traceName else existingSpanNode?.traceName
                     footPrintTree.computeTraceSummary()
                     gson.toJson(footPrintTree, aggTypeToken).toByteArray()
                 },
