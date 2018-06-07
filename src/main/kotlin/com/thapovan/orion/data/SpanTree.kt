@@ -94,7 +94,6 @@ class SpanTree {
             ) {
                 ANOMALY++
                 anomalySpans.add(it.spanId)
-                spanSummary["ERROR"] = spanSummary["ERROR"] ?:0 + 1
             }
         }
         traceEventSummary.clear()
@@ -104,7 +103,7 @@ class SpanTree {
         traceEventSummary["DEBUG"] = DEBUG
         traceEventSummary["INFO"] = INFO
         traceEventSummary["WARN"] = WARN
-        traceEventSummary["ERROR"] = ERROR+ANOMALY
+        traceEventSummary["ERROR"] = ERROR
         traceEventSummary["CRITICAL"] = CRITICAL
         traceEventSummary["ANOMALY"] = ANOMALY
     }

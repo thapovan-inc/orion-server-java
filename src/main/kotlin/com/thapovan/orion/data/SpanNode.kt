@@ -88,6 +88,9 @@ data class SpanNode(
             }
         }
         logSummary.clear()
+        if(START == 0 || (STOP != START)) {
+            ERROR++
+        }
 
         logSummary["START"] = START
         logSummary["STOP"] = STOP
