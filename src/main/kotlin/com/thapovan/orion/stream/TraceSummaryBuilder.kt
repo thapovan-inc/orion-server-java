@@ -109,7 +109,7 @@ object TraceSummaryBuilder {
                     } else {
                         try {
                             gson.fromJson<TraceSummary>(String(summaryBytes), traceSummaryType)
-                        } catch(e: Throwable) {
+                        } catch (e: Throwable) {
                             TraceSummary("")
                         }
                     }
@@ -199,15 +199,15 @@ object TraceSummaryBuilder {
                 JoinWindows.of(KafkaStream.WINDOW_DURATION_MS)
             )
             .groupByKey()
-            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
-                .advanceBy(KafkaStream.WINDOW_SLIDE_DURATION_MS)
-                .until(2*KafkaStream.WINDOW_DURATION_MS))
+            .windowedBy(
+                TimeWindows.of(KafkaStream.WINDOW_DURATION_MS))
+//            .windowedBy(SessionWindows.with(KafkaStream.WINDOW_SLIDE_DURATION_MS*2))
             .aggregate({
                 gson.toJson(TraceSummary(""), traceSummaryType).toByteArray()
             },
                 { key: String, value: ByteArray?, aggregate: ByteArray ->
-                    val summary = if (value != null && !value.isEmpty() ) {
-                            gson.fromJson<TraceSummary>(String(value), traceSummaryType)
+                    val summary = if (value != null && !value.isEmpty()) {
+                        gson.fromJson<TraceSummary>(String(value), traceSummaryType)
                     } else {
                         return@aggregate aggregate
                     }
@@ -258,8 +258,10 @@ object TraceSummaryBuilder {
                             summary.traceName
                         else intermediateSummary.traceName
 
-                    val deviceInfo = if(intermediateSummary.deviceInfo.size() > 0) intermediateSummary.deviceInfo else summary.deviceInfo
-                    val appInfo = if(intermediateSummary.appInfo.size() > 0) intermediateSummary.appInfo else summary.appInfo
+                    val deviceInfo =
+                        if (intermediateSummary.deviceInfo.size() > 0) intermediateSummary.deviceInfo else summary.deviceInfo
+                    val appInfo =
+                        if (intermediateSummary.appInfo.size() > 0) intermediateSummary.appInfo else summary.appInfo
                     val finalSummary = TraceSummary(
                         traceId, startTime, endTime, email, userId, services, traceSummary,
                         country,
