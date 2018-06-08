@@ -27,7 +27,7 @@ import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.JoinWindows
 import org.apache.kafka.streams.kstream.KStream
-import org.apache.kafka.streams.kstream.TimeWindows
+import org.apache.kafka.streams.kstream.SessionWindows
 import kotlin.math.max
 import kotlin.math.min
 
@@ -49,7 +49,8 @@ object TraceSummaryBuilder {
         val metadataTraceStream = metaDataObject.selectKey { key, _ ->
             key.split("_")[0]
         }
-        val traceSummaryTable = fatTraceObjectStream
+        val summaryStream = fatTraceObjectStream
+            .filter { key, value -> value != null }
             .map { key, value ->
                 val spanTree = gson.fromJson<SpanTree>(String(value), spanTreeType)
                 val servicesList: MutableList<String> = ArrayList()
@@ -64,7 +65,7 @@ object TraceSummaryBuilder {
                     endTime = spanTree.endTime
                 }
                 val traceId = key
-                val traceSummary = TraceSummary(
+                val summary = TraceSummary(
                     traceId,
                     startTime,
                     endTime,
@@ -72,147 +73,110 @@ object TraceSummaryBuilder {
                     traceEventSummary = spanTree.traceEventSummary ?: HashMap(),
                     traceName = spanTree.traceName
                 )
-                println("traceSummaryTable ${traceSummary.traceName}")
-                KeyValue.pair(key, gson.toJson(traceSummary, traceSummaryType).toByteArray())
-            }
-
-        val summaryStream = metadataTraceStream
-            .selectKey { key, _ ->
-                key.split("_")[0]
-            }
-            .mapValues {
-                gson.toJson(it).toByteArray()
-            }
-            .join(
-                traceSummaryTable,
-                { metadataByte: ByteArray?, summaryBytes: ByteArray? ->
-                    val metadataObjectValue = if (metadataByte == null || metadataByte.size == 0) {
-                        MetaDataObject("", 0, 0, "", "")
-                    } else {
-                        gson.fromJson<MetaDataObject>(String(metadataByte), metadataType)
-                    }
-                    if (metadataObjectValue.spanId.isBlank()) {
-                        summaryBytes
-                    }
-                    val metadata = try {
-                        JsonParser().parse(metadataObjectValue.metadata)
-                    } catch (e: Exception) {
-                        JsonNull.INSTANCE
-                    }
-                    val jsonObject = try {
-                        metadata.asJsonObject
-                    } catch (e: Throwable) {
-                        null
-                    }
-                    val summary = if (summaryBytes == null || summaryBytes.size == 0) {
-                        TraceSummary("")
-                    } else {
+                val spanList = spanTree.spanList
+                spanList.forEach {
+                    val spanEvents = it.events
+                    spanEvents.forEach {
+                        val jsonObject = it.metadata?.asJsonObject
                         try {
-                            gson.fromJson<TraceSummary>(String(summaryBytes), traceSummaryType)
-                        } catch (e: Throwable) {
-                            TraceSummary("")
-                        }
-                    }
-                    try {
-                        if (jsonObject != null) {
-                            if (jsonObject.has("http")) {
-                                val http = jsonObject.getAsJsonObject("http")
-                                if (http.has("request")) {
-                                    val request = http.getAsJsonObject("request")
-                                    if (request.has("ip")) {
-                                        summary.ip = request.get("ip").asString
+                            if (jsonObject != null) {
+                                if (jsonObject.has("http")) {
+                                    val http = jsonObject.getAsJsonObject("http")
+                                    if (http.has("request")) {
+                                        val request = http.getAsJsonObject("request")
+                                        if (request.has("ip")) {
+                                            summary.ip = request.get("ip").asString
+                                        }
+                                        if (request.has("country")) {
+                                            summary.country = request.get("country").asString
+                                        }
                                     }
-                                    if (request.has("country")) {
-                                        summary.country = request.get("country").asString
+                                } else {
+                                    if (jsonObject.has("http.request.ip")) {
+                                        summary.ip = jsonObject.get("http.request.ip").asString
+                                    }
+                                    if (jsonObject.has("http.request.country")) {
+                                        summary.country = jsonObject.get("http.request.country").asString
                                     }
                                 }
-                            } else {
-                                if (jsonObject.has("http.request.ip")) {
-                                    summary.ip = jsonObject.get("http.request.ip").asString
+                                if (jsonObject.has("user")) {
+                                    val user = jsonObject.getAsJsonObject("user")
+                                    if (user.has("id")) {
+                                        summary.userId = user.get("id").asString
+                                    }
+                                    if (user.has("email")) {
+                                        summary.email = user.get("email").asString
+                                    }
+                                } else {
+                                    if (jsonObject.has("user.id")) {
+                                        summary.userId = jsonObject.get("user.id").asString
+                                    }
+                                    if (jsonObject.has("user.email")) {
+                                        summary.email = jsonObject.get("user.email").asString
+                                    }
                                 }
-                                if (jsonObject.has("http.request.country")) {
-                                    summary.country = jsonObject.get("http.request.country").asString
-                                }
-                            }
-                            if (jsonObject.has("user")) {
-                                val user = jsonObject.getAsJsonObject("user")
-                                if (user.has("id")) {
-                                    summary.userId = user.get("id").asString
-                                }
-                                if (user.has("email")) {
-                                    summary.email = user.get("email").asString
-                                }
-                            } else {
-                                if (jsonObject.has("user.id")) {
-                                    summary.userId = jsonObject.get("user.id").asString
-                                }
-                                if (jsonObject.has("user.email")) {
-                                    summary.email = jsonObject.get("user.email").asString
-                                }
-                            }
 
-                            if (jsonObject.has("orion.signal")) {
-                                val orion = jsonObject.get("orion.signal").asString
-                                when (orion) {
-                                    "START_TRACE" -> {
-                                        summary.start_trace_count++
-                                        println("found start trace")
+                                if (jsonObject.has("orion.signal")) {
+                                    val orion = jsonObject.get("orion.signal").asString
+                                    when (orion) {
+                                        "START_TRACE" -> {
+                                            summary.start_trace_count++
+//                                        println("found start trace")
+                                        }
+                                        "END_TRACE" -> {
+                                            summary.end_trace_count++
+//                                        println("found end trace")
+                                        }
                                     }
-                                    "END_TRACE" -> {
-                                        summary.end_trace_count++
-                                        println("found end trace")
-                                    }
-                                }
-                            } else {
-                                if (jsonObject.has("orion") && jsonObject.getAsJsonPrimitive("orion").isJsonObject) {
-                                    val orion = jsonObject.getAsJsonObject("orion")
-                                    if (orion.has("signal") && jsonObject.getAsJsonPrimitive("signal").isString) {
-                                        val signal = orion.get("signal").asString
-                                        when (signal) {
-                                            "START_TRACE" -> {
-                                                summary.start_trace_count++
-                                                println("found start trace")
-                                            }
-                                            "END_TRACE" -> {
-                                                summary.end_trace_count++
-                                                println("found end trace")
+                                } else {
+                                    if (jsonObject.has("orion") && jsonObject.getAsJsonPrimitive("orion").isJsonObject) {
+                                        val orion = jsonObject.getAsJsonObject("orion")
+                                        if (orion.has("signal") && jsonObject.getAsJsonPrimitive("signal").isString) {
+                                            val signal = orion.get("signal").asString
+                                            when (signal) {
+                                                "START_TRACE" -> {
+                                                    summary.start_trace_count++
+                                                    println("found start trace")
+                                                }
+                                                "END_TRACE" -> {
+                                                    summary.end_trace_count++
+                                                    println("found end trace")
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
 
-                            if (jsonObject.has("device") && jsonObject.getAsJsonPrimitive("device").isJsonObject) {
-                                summary.deviceInfo = jsonObject.getAsJsonObject("device")
-                            }
+                                if (jsonObject.has("device") && jsonObject.getAsJsonPrimitive("device").isJsonObject) {
+                                    summary.deviceInfo = jsonObject.getAsJsonObject("device")
+                                }
 
-                            if (jsonObject.has("app") && jsonObject.getAsJsonPrimitive("app").isJsonObject) {
-                                summary.appInfo = jsonObject.getAsJsonObject("app")
+                                if (jsonObject.has("app") && jsonObject.getAsJsonPrimitive("app").isJsonObject) {
+                                    summary.appInfo = jsonObject.getAsJsonObject("app")
+                                }
                             }
+                        } catch (t: Throwable) {
+
                         }
-                    } catch (t: Throwable) {
-
                     }
-                    println("traceSummaryTable join ${summary.traceName}")
-                    gson.toJson(summary, traceSummaryType).toByteArray()
-                },
-                JoinWindows.of(KafkaStream.WINDOW_DURATION_MS)
-            )
+                }
+                println("traceSummaryTable ${summary.traceName}")
+                KeyValue.pair(key, gson.toJson(summary, traceSummaryType).toByteArray())
+            }
             .groupByKey()
-            .windowedBy(
-                TimeWindows.of(KafkaStream.WINDOW_DURATION_MS))
-//            .windowedBy(SessionWindows.with(KafkaStream.WINDOW_SLIDE_DURATION_MS*2))
+            .windowedBy(SessionWindows.with(KafkaStream.WINDOW_DURATION_MS))
             .aggregate({
                 gson.toJson(TraceSummary(""), traceSummaryType).toByteArray()
-            },
-                { key: String, value: ByteArray?, aggregate: ByteArray ->
-                    val summary = if (value != null && !value.isEmpty()) {
-                        gson.fromJson<TraceSummary>(String(value), traceSummaryType)
-                    } else {
-                        return@aggregate aggregate
+            }, { key:String, value: ByteArray?, aggregate: ByteArray? ->
+                    if(value != null && !value.isEmpty()) {
+                        aggregate
                     }
-                    val intermediateSummary = gson.fromJson<TraceSummary>(String(aggregate), traceSummaryType)
-                    val traceId = key
+                    if(aggregate != null && !aggregate.isEmpty()) {
+                        value
+                    }
+                    val summary = gson.fromJson<TraceSummary>(String(value!!), traceSummaryType)
+                    val intermediateSummary = gson.fromJson<TraceSummary>(String(aggregate!!), traceSummaryType)
+                    val traceId = if(intermediateSummary.traceId.isNullOrBlank()) summary.traceId else intermediateSummary.traceId
                     println("received summary startcount ${summary.start_trace_count} endcount ${summary.end_trace_count}")
                     println("received intermediate startcount ${intermediateSummary.start_trace_count} endcount ${intermediateSummary.end_trace_count}")
                     println("aggregate summary: ${summary.traceName} intermediate: ${intermediateSummary.traceName}")
@@ -252,6 +216,7 @@ object TraceSummaryBuilder {
                     if (startTraceCount == 0 || endTraceCount == 0 || startTraceCount != endTraceCount) {
                         traceIncomplete = true
                     }
+                    println("traceIncomplete $traceIncomplete $startTraceCount $endTraceCount")
 
                     val traceName =
                         if (intermediateSummary.traceName.isNullOrBlank() && !summary.traceName.isNullOrBlank())
@@ -274,7 +239,81 @@ object TraceSummaryBuilder {
                         appInfo = appInfo
                     )
                     gson.toJson(finalSummary, traceSummaryType).toByteArray()
-                })
+                },
+                { key: String, value: ByteArray?, aggregate: ByteArray? ->
+                    if(value != null && !value.isEmpty()) {
+                        aggregate
+                    }
+                    if(aggregate != null && !aggregate.isEmpty()) {
+                        value
+                    }
+                    val summary = gson.fromJson<TraceSummary>(String(value!!), traceSummaryType)
+                    val intermediateSummary = gson.fromJson<TraceSummary>(String(aggregate!!), traceSummaryType)
+                    val traceId = if(intermediateSummary.traceId.isNullOrBlank()) summary.traceId else intermediateSummary.traceId
+                    println("received summary startcount ${summary.start_trace_count} endcount ${summary.end_trace_count}")
+                    println("received intermediate startcount ${intermediateSummary.start_trace_count} endcount ${intermediateSummary.end_trace_count}")
+                    println("aggregate summary: ${summary.traceName} intermediate: ${intermediateSummary.traceName}")
+                    val startTime =
+                        if (intermediateSummary.startTime == 0L) summary.startTime else if (summary.startTime != 0L && summary.startTime < intermediateSummary.startTime) {
+                            summary.startTime
+                        } else {
+                            intermediateSummary.startTime
+                        }
+
+                    val endTime =
+                        if (intermediateSummary.endTime == 0L) summary.endTime else if (summary.endTime != 0L && summary.endTime > intermediateSummary.endTime) {
+                            summary.endTime
+                        } else {
+                            intermediateSummary.endTime
+                        }
+                    val email = if (summary.email.isNullOrBlank()) intermediateSummary.email else summary.email
+                    val userId = if (summary.userId.isNullOrBlank()) intermediateSummary.userId else summary.userId
+                    val servicesSet = HashSet<String>()
+                    servicesSet.addAll(intermediateSummary.serviceNames)
+                    servicesSet.addAll(summary.serviceNames)
+                    val traceSummary: MutableMap<String, Int> = HashMap()
+                    summary.traceEventSummary.forEach { t, u ->
+                        val iU = intermediateSummary.traceEventSummary[t] ?: -1
+                        if (t == "ANOMALY" && iU != -1) {
+                            traceSummary[t] = min(iU, u)
+                        } else {
+                            traceSummary[t] = max(iU, u)
+                        }
+                    }
+                    val services = servicesSet.toMutableList()
+                    val country = if (summary.country.isNullOrBlank()) intermediateSummary.country else summary.country
+                    val ip = if (summary.ip.isNullOrBlank()) intermediateSummary.ip else summary.ip
+                    val startTraceCount = summary.start_trace_count + intermediateSummary.start_trace_count
+                    val endTraceCount = summary.end_trace_count + intermediateSummary.end_trace_count
+                    var traceIncomplete = false
+                    if (startTraceCount == 0 || endTraceCount == 0 || startTraceCount != endTraceCount) {
+                        traceIncomplete = true
+                    }
+                    println("traceIncomplete $traceIncomplete $startTraceCount $endTraceCount")
+
+                    val traceName =
+                        if (intermediateSummary.traceName.isNullOrBlank() && !summary.traceName.isNullOrBlank())
+                            summary.traceName
+                        else intermediateSummary.traceName
+
+                    val deviceInfo =
+                        if (intermediateSummary.deviceInfo.size() > 0) intermediateSummary.deviceInfo else summary.deviceInfo
+                    val appInfo =
+                        if (intermediateSummary.appInfo.size() > 0) intermediateSummary.appInfo else summary.appInfo
+                    val finalSummary = TraceSummary(
+                        traceId, startTime, endTime, email, userId, services, traceSummary,
+                        country,
+                        ip,
+                        traceIncomplete = traceIncomplete,
+                        start_trace_count = startTraceCount,
+                        end_trace_count = endTraceCount,
+                        traceName = traceName,
+                        deviceInfo = deviceInfo,
+                        appInfo = appInfo
+                    )
+                    gson.toJson(finalSummary, traceSummaryType).toByteArray()
+                }
+                )
             .toStream()
             .selectKey { key, _ -> key.key() }
 

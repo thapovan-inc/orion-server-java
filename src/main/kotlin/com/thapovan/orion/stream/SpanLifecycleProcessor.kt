@@ -24,7 +24,9 @@ import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.Materialized
+import org.apache.kafka.streams.kstream.SessionWindows
 import org.apache.kafka.streams.kstream.TimeWindows
+import kotlin.math.min
 
 object SpanLifecycleProcessor {
     fun buildGraph(streamsBuilder: StreamsBuilder, protoSpanStartStopEventStream: KStream<String, Span>) {
@@ -36,73 +38,42 @@ object SpanLifecycleProcessor {
 
         val startStopSpan = protoSpanStartStopEventStream
             .mapValues {
-                it.toByteArray()
+                val startTime = if(it.hasStartEvent()) it.timestamp else 0
+                val endTime = if(it.hasEndEvent()) it.timestamp else 0
+                val spanStartId = if(it.hasStartEvent()) it.internalSpanRefNumber else 0
+                val spanNode = SpanNode(it.spanId,
+                    it.serviceName,
+                    it.parentSpanId,
+                    startTime,
+                    endTime,traceId = it.traceContext.traceId,
+                    traceName = it.traceContext.traceName,
+                    start_id = spanStartId)
+                gson.toJson(spanNode,aggTypeToken).toByteArray()
             }
             .groupBy { key, value ->
                 val parts = key.split("_")
                 return@groupBy "${parts[0]}_${parts[1]}"
             }
-            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS).advanceBy(KafkaStream.WINDOW_SLIDE_DURATION_MS))
-            .aggregate(
-                {
-                    gson.toJson(SpanNode(""), aggTypeToken).toByteArray()
-                },
-                { key, spanArr, bValueAggregate ->
-                    val spanNode =
-                        gson.fromJson<SpanNode>(String(bValueAggregate), aggTypeToken)
-                    val span = Span.parseFrom(spanArr)
-                    val newSpan = when {
-                        span.hasStartEvent() -> {
-                            val meta = span.startEvent.jsonString
-                            SpanNode(
-                                span.spanId,
-                                if (span.serviceName.isNullOrEmpty()) spanNode.serviceName else span.serviceName,
-                                if (span.parentSpanId.isNullOrEmpty()) spanNode.parentId else span.parentSpanId,
-                                span.timestamp,
-                                spanNode.endTime,
-                                traceId = spanNode.traceId ?: span.traceContext.traceId,
-                                traceName = spanNode.traceName ?: span.traceContext.traceName,
-                                start_id = span.internalSpanRefNumber
-                            )
-                        }
-                        span.hasEndEvent() -> SpanNode(
-                            span.spanId,
-                            if (span.serviceName.isNullOrEmpty()) spanNode.serviceName else span.serviceName,
-                            if (span.parentSpanId.isNullOrEmpty()) spanNode.parentId else span.parentSpanId,
-                            spanNode.startTime,
-                            span.timestamp,
-                            traceId = spanNode.traceId ?: span.traceContext.traceId,
-                            traceName = spanNode.traceName ?: span.traceContext.traceName,
-                            start_id = spanNode.start_id
-                        )
-                        else -> {
-                            if (!span.serviceName.isNullOrEmpty() && spanNode.serviceName.isNullOrBlank()) {
-                                spanNode.serviceName = span.serviceName
-                            }
-                            if (!span.parentSpanId.isNullOrEmpty() && spanNode.parentId.isNullOrBlank()) {
-                                spanNode.parentId = span.parentSpanId
-                            }
-                            if (spanNode.startTime == 0L || (spanNode.startTime > span.timestamp)) {
-                                spanNode.startTime = span.timestamp
-                            }
-                            if (spanNode.endTime == 0L || (spanNode.endTime < span.timestamp)) {
-                                spanNode.endTime = span.timestamp
-                            }
-                            if (spanNode.traceId.isNullOrBlank()) {
-                                spanNode.traceId = span.traceContext.traceId
-                            }
-                            if (spanNode.traceName.isNullOrBlank()) {
-                                spanNode.traceName = span.traceContext.traceName
-                            }
-                            spanNode
-                        }
-                    }
-                    gson.toJson(newSpan, aggTypeToken).toByteArray()
-                },
-                Materialized.with(Serdes.String(), Serdes.ByteArray())
-            )
+            .windowedBy(SessionWindows.with(KafkaStream.WINDOW_DURATION_MS))
+            .reduce { value1, value2 ->
+                println("reducing span lifecycle")
+                val spanNode1 = gson.fromJson<SpanNode>(String(value1), aggTypeToken)
+                val spanNode2 = gson.fromJson<SpanNode>(String(value2), aggTypeToken)
+                val newSpan = SpanNode(
+                    spanNode1.spanId,
+                    spanNode1.serviceName ?: spanNode2.serviceName,
+                    spanNode1.parentId ?: spanNode2.parentId,
+                    if (spanNode1.startTime == 0L) spanNode2.startTime else spanNode1.startTime,
+                    if (spanNode1.endTime == 0L) spanNode2.endTime else spanNode1.endTime,
+                    traceId = spanNode1.traceId ?: spanNode2.traceId,
+                    traceName = spanNode1.traceName ?: spanNode2.traceName,
+                    start_id = if(spanNode1.start_id == 0L) spanNode2.start_id else spanNode1.start_id
+                )
+                gson.toJson(newSpan, aggTypeToken).toByteArray()
+            }
             .toStream()
             .selectKey { key, _ -> key.key() }
+        startStopSpan.foreach { key, value -> println(String(value)) }
 
         startStopSpan.to("span-start-stop")
     }

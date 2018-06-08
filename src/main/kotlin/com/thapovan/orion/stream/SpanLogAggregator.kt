@@ -7,10 +7,7 @@ import com.thapovan.orion.data.LogObject
 import com.thapovan.orion.proto.Span
 import org.apache.kafka.common.serialization.Serdes
 import org.apache.kafka.streams.StreamsBuilder
-import org.apache.kafka.streams.kstream.JoinWindows
-import org.apache.kafka.streams.kstream.KStream
-import org.apache.kafka.streams.kstream.Materialized
-import org.apache.kafka.streams.kstream.TimeWindows
+import org.apache.kafka.streams.kstream.*
 
 object SpanLogAggregator {
     fun buildGraph(
@@ -150,24 +147,17 @@ object SpanLogAggregator {
                 JoinWindows.of(KafkaStream.WINDOW_DURATION_MS)
             )
             .groupByKey()
-            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
-                .advanceBy(KafkaStream.WINDOW_SLIDE_DURATION_MS)
-                .until(2*KafkaStream.WINDOW_DURATION_MS))
-            .aggregate(
-                {
-                    gson.toJson(ArrayList<LogObject>() as MutableList<LogObject>, logArrTypeToken).toByteArray()
-                },
-                { key: String, aggregate1: ByteArray, aggregate2: ByteArray ->
-                    val logArray1 = gson.fromJson<MutableList<LogObject>>(String(aggregate1), logArrTypeToken)
-                    val logArray2 = gson.fromJson<MutableList<LogObject>>(String(aggregate2), logArrTypeToken)
-                    val set = HashSet<LogObject>()
-                    set.addAll(logArray1)
-                    set.addAll(logArray2)
-                    val finalList = set.toMutableList().sortedBy { it.eventId }
-                    gson.toJson(finalList, logArrTypeToken).toByteArray()
-                },
-                Materialized.with(Serdes.String(), Serdes.ByteArray())
-            )
+            .windowedBy(SessionWindows.with(KafkaStream.WINDOW_DURATION_MS))
+            .reduce { value1, value2 ->
+                println("inside span log reduce")
+                val logArray1 = gson.fromJson<MutableList<LogObject>>(String(value1), logArrTypeToken)
+                val logArray2 = gson.fromJson<MutableList<LogObject>>(String(value2), logArrTypeToken)
+                val set = HashSet<LogObject>()
+                set.addAll(logArray1)
+                set.addAll(logArray2)
+                val finalList = set.toMutableList().sortedBy { it.eventId }
+                gson.toJson(finalList, logArrTypeToken).toByteArray()
+            }
             .toStream()
             .selectKey { key, _ ->
                 key.key()

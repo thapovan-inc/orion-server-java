@@ -12,6 +12,7 @@ import org.apache.kafka.streams.kstream.JoinWindows
 import org.apache.kafka.streams.kstream.KStream
 import org.apache.kafka.streams.kstream.Materialized
 import org.apache.kafka.streams.kstream.TimeWindows
+import org.apache.kafka.streams.state.Stores
 
 object FatTraceObject {
 
@@ -64,13 +65,14 @@ object FatTraceObject {
                 )
             }
             .groupByKey()
-            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
-                .until(2*KafkaStream.WINDOW_DURATION_MS))
+//            .windowedBy(TimeWindows.of(KafkaStream.WINDOW_DURATION_MS)
+//                .advanceBy(KafkaStream.WINDOW_SLIDE_DURATION_MS)
+//                .until(2*KafkaStream.WINDOW_DURATION_MS))
             .aggregate(
                 {
                     gson.toJson(SpanTree(SpanNode("ROOT", null, null)), aggTypeToken).toByteArray()
                 },
-                { key, spanNodeBytes, bValueAggregate ->
+                { key: String, spanNodeBytes: ByteArray, bValueAggregate: ByteArray ->
                     val footPrintTree =
                         gson.fromJson<SpanTree>(String(bValueAggregate), aggTypeToken)
                     val spanNode = gson.fromJson<SpanNode>(String(spanNodeBytes), spanNodeTypeToken)
@@ -201,9 +203,7 @@ object FatTraceObject {
                             if (footPrintTree?.traceName.isNullOrBlank()) traceName else footPrintTree?.traceName
                     footPrintTree.computeTraceSummary()
                     gson.toJson(footPrintTree, aggTypeToken).toByteArray()
-                },
-                Materialized.with(Serdes.String(), Serdes.ByteArray())
-            )
+                }, Materialized.`as`<String,ByteArray>(Stores.persistentKeyValueStore("fat-trace-store")))
             .mapValues {
                 val footPrintTree = gson.fromJson<SpanTree>(String(it), aggTypeToken)
                 footPrintTree.spanMap.forEach { _, u ->
@@ -220,7 +220,7 @@ object FatTraceObject {
                 gson.toJson(footPrintTree, aggTypeToken).toByteArray()
             }
             .toStream()
-            .selectKey { key, value -> key.key() }
+//            .selectKey { key, value -> key.key() }
             .to("fat-trace-object")
     }
 }

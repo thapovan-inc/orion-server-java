@@ -24,7 +24,8 @@ public class Main {
         boolean startKafkaStreams = false;
 
         List<String> argsList = new ArrayList();
-        Collections.addAll(argsList,args);
+        if (args != null)
+            Collections.addAll(argsList,args);
         if (argsList.size() > 0) {
             startTracerGrpc = argsList.contains("TracerGrpc");
             startTracerREST = argsList.contains("TracerREST");
