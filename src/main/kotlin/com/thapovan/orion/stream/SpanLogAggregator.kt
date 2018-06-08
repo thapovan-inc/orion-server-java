@@ -158,6 +158,7 @@ object SpanLogAggregator {
                 val finalList = set.toMutableList().sortedBy { it.eventId }
                 gson.toJson(finalList, logArrTypeToken).toByteArray()
             }
+            .filter {_, value: ByteArray? -> value != null}
             .toStream()
             .selectKey { key, _ ->
                 key.key()

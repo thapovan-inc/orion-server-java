@@ -71,6 +71,7 @@ object SpanLifecycleProcessor {
                 )
                 gson.toJson(newSpan, aggTypeToken).toByteArray()
             }
+            .filter {_, value: ByteArray? -> value != null}
             .toStream()
             .selectKey { key, _ -> key.key() }
         startStopSpan.foreach { key, value -> println(String(value)) }
