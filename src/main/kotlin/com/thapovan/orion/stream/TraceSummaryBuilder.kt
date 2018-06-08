@@ -106,7 +106,8 @@ object TraceSummaryBuilder {
                                                     .entrySet()
                                                     .toList()
                                                     .map {
-                                                        if (it.key.toLowerCase() == "x-forwaded-for") {
+                                                        if (it.key.toLowerCase() == "x-forwarded-for") {
+                                                            println("found x-forwarded-for")
                                                             it.value
                                                         } else {
                                                             null
@@ -115,6 +116,8 @@ object TraceSummaryBuilder {
                                                     .firstOrNull {
                                                         it != null
                                                     }
+                                                println("xff is null ${xff == null}")
+                                                println("xff ${xff}")
                                                 if (xff != null && xff.isJsonPrimitive) {
                                                     val parts = xff.asString.split(",")
                                                     if (parts.isNotEmpty()) {
