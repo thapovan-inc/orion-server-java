@@ -81,8 +81,9 @@ class KafkaStream {
         FatTraceObject.buildGraph(streamBuilder, spanLogAggregateStream, spanStartStopRaw)
 
         val fatTraceObjectStream = streamBuilder.stream<String, ByteArray>("fat-trace-object")
+        val fatIncompleteTraceObjectStream = streamBuilder.stream<String,ByteArray>("fat-incomplete-trace-object")
 
-        TraceSummaryBuilder.buildGraph(streamBuilder, fatTraceObjectStream, metaDataObject)
+        TraceSummaryBuilder.buildGraph(streamBuilder, fatTraceObjectStream, fatIncompleteTraceObjectStream)
 
         kafkaStream = KafkaStreams(streamBuilder.build(), streamConfig)
         kafkaStream?.cleanUp()
