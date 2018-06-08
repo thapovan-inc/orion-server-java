@@ -17,6 +17,7 @@
 package com.thapovan.orion.stream
 
 import com.google.gson.GsonBuilder
+import com.google.gson.JsonElement
 import com.google.gson.JsonNull
 import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
@@ -86,8 +87,36 @@ object TraceSummaryBuilder {
                                     val http = jsonObject.getAsJsonObject("http")
                                     if (http.has("request")) {
                                         val request = http.getAsJsonObject("request")
-                                        if (request.has("ip")) {
-                                            summary.ip = request.get("ip").asString
+                                        var ip:String? = null
+                                        if(request.has("headers")) {
+                                            val headers = request.getAsJsonObject("headers")
+                                            val xff: JsonElement? = headers
+                                                .entrySet()
+                                                .toList()
+                                                .map {
+                                                    if (it.key.toLowerCase() == "x-forwaded-for") {
+                                                        return@map it.value
+                                                    } else {
+                                                        return@map null
+                                                    }
+                                                }
+                                                .firstOrNull {
+                                                    it != null
+                                                }
+                                            if(xff != null && xff.isJsonPrimitive) {
+                                                val parts = xff.asString.split(",")
+                                                if (parts.isNotEmpty()) {
+                                                    ip = parts[0].trim()
+                                                }
+                                            }
+                                        }
+                                        if(ip == null) {
+                                            if (request.has("ip")) {
+                                                ip = request.get("ip").asString
+                                            }
+                                        }
+                                        if (!ip.isNullOrEmpty()) {
+                                            summary.ip = ip
                                         }
                                         if (request.has("country")) {
                                             summary.country = request.get("country").asString
