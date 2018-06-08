@@ -165,7 +165,7 @@ object SpanLogAggregator {
 
         spanLogArrayStream
             .to("span-log-aggregated")
-        spanLogArrayStream.foreach { _, value -> println(String(value)) }
+        spanLogArrayStream.foreach { _, value: ByteArray? -> println(String(value ?: ByteArray(0) )) }
 
     }
 }
