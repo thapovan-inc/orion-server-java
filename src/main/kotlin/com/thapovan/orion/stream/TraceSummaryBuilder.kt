@@ -27,7 +27,9 @@ import org.apache.kafka.streams.KeyValue
 import org.apache.kafka.streams.StreamsBuilder
 import org.apache.kafka.streams.kstream.JoinWindows
 import org.apache.kafka.streams.kstream.KStream
+import org.apache.kafka.streams.kstream.Materialized
 import org.apache.kafka.streams.kstream.SessionWindows
+import org.apache.kafka.streams.state.Stores
 import kotlin.math.max
 import kotlin.math.min
 
@@ -164,158 +166,83 @@ object TraceSummaryBuilder {
                 KeyValue.pair(key, gson.toJson(summary, traceSummaryType).toByteArray())
             }
             .groupByKey()
-            .windowedBy(SessionWindows.with(KafkaStream.WINDOW_DURATION_MS))
             .aggregate({
                 gson.toJson(TraceSummary(""), traceSummaryType).toByteArray()
-            }, { key:String, value: ByteArray?, aggregate: ByteArray? ->
-                    if(value != null && !value.isEmpty()) {
-                        aggregate
-                    }
-                    if(aggregate != null && !aggregate.isEmpty()) {
-                        value
-                    }
-                    val summary = gson.fromJson<TraceSummary>(String(value!!), traceSummaryType)
-                    val intermediateSummary = gson.fromJson<TraceSummary>(String(aggregate!!), traceSummaryType)
-                    val traceId = if(intermediateSummary.traceId.isNullOrBlank()) summary.traceId else intermediateSummary.traceId
-                    println("received summary startcount ${summary.start_trace_count} endcount ${summary.end_trace_count}")
-                    println("received intermediate startcount ${intermediateSummary.start_trace_count} endcount ${intermediateSummary.end_trace_count}")
-                    println("aggregate summary: ${summary.traceName} intermediate: ${intermediateSummary.traceName}")
-                    val startTime =
-                        if (intermediateSummary.startTime == 0L) summary.startTime else if (summary.startTime != 0L && summary.startTime < intermediateSummary.startTime) {
-                            summary.startTime
-                        } else {
-                            intermediateSummary.startTime
-                        }
-
-                    val endTime =
-                        if (intermediateSummary.endTime == 0L) summary.endTime else if (summary.endTime != 0L && summary.endTime > intermediateSummary.endTime) {
-                            summary.endTime
-                        } else {
-                            intermediateSummary.endTime
-                        }
-                    val email = if (summary.email.isNullOrBlank()) intermediateSummary.email else summary.email
-                    val userId = if (summary.userId.isNullOrBlank()) intermediateSummary.userId else summary.userId
-                    val servicesSet = HashSet<String>()
-                    servicesSet.addAll(intermediateSummary.serviceNames)
-                    servicesSet.addAll(summary.serviceNames)
-                    val traceSummary: MutableMap<String, Int> = HashMap()
-                    summary.traceEventSummary.forEach { t, u ->
-                        val iU = intermediateSummary.traceEventSummary[t] ?: -1
-                        if (t == "ANOMALY" && iU != -1) {
-                            traceSummary[t] = min(iU, u)
-                        } else {
-                            traceSummary[t] = max(iU, u)
-                        }
-                    }
-                    val services = servicesSet.toMutableList()
-                    val country = if (summary.country.isNullOrBlank()) intermediateSummary.country else summary.country
-                    val ip = if (summary.ip.isNullOrBlank()) intermediateSummary.ip else summary.ip
-                    val startTraceCount = summary.start_trace_count + intermediateSummary.start_trace_count
-                    val endTraceCount = summary.end_trace_count + intermediateSummary.end_trace_count
-                    var traceIncomplete = false
-                    if (startTraceCount == 0 || endTraceCount == 0 || startTraceCount != endTraceCount) {
-                        traceIncomplete = true
-                    }
-                    println("traceIncomplete $traceIncomplete $startTraceCount $endTraceCount")
-
-                    val traceName =
-                        if (intermediateSummary.traceName.isNullOrBlank() && !summary.traceName.isNullOrBlank())
-                            summary.traceName
-                        else intermediateSummary.traceName
-
-                    val deviceInfo =
-                        if (intermediateSummary.deviceInfo.size() > 0) intermediateSummary.deviceInfo else summary.deviceInfo
-                    val appInfo =
-                        if (intermediateSummary.appInfo.size() > 0) intermediateSummary.appInfo else summary.appInfo
-                    val finalSummary = TraceSummary(
-                        traceId, startTime, endTime, email, userId, services, traceSummary,
-                        country,
-                        ip,
-                        traceIncomplete = traceIncomplete,
-                        start_trace_count = startTraceCount,
-                        end_trace_count = endTraceCount,
-                        traceName = traceName,
-                        deviceInfo = deviceInfo,
-                        appInfo = appInfo
-                    )
-                    gson.toJson(finalSummary, traceSummaryType).toByteArray()
-                },
-                { key: String, value: ByteArray?, aggregate: ByteArray? ->
-                    if(value != null && !value.isEmpty()) {
-                        aggregate
-                    }
-                    if(aggregate != null && !aggregate.isEmpty()) {
-                        value
-                    }
-                    val summary = gson.fromJson<TraceSummary>(String(value!!), traceSummaryType)
-                    val intermediateSummary = gson.fromJson<TraceSummary>(String(aggregate!!), traceSummaryType)
-                    val traceId = if(intermediateSummary.traceId.isNullOrBlank()) summary.traceId else intermediateSummary.traceId
-                    println("received summary startcount ${summary.start_trace_count} endcount ${summary.end_trace_count}")
-                    println("received intermediate startcount ${intermediateSummary.start_trace_count} endcount ${intermediateSummary.end_trace_count}")
-                    println("aggregate summary: ${summary.traceName} intermediate: ${intermediateSummary.traceName}")
-                    val startTime =
-                        if (intermediateSummary.startTime == 0L) summary.startTime else if (summary.startTime != 0L && summary.startTime < intermediateSummary.startTime) {
-                            summary.startTime
-                        } else {
-                            intermediateSummary.startTime
-                        }
-
-                    val endTime =
-                        if (intermediateSummary.endTime == 0L) summary.endTime else if (summary.endTime != 0L && summary.endTime > intermediateSummary.endTime) {
-                            summary.endTime
-                        } else {
-                            intermediateSummary.endTime
-                        }
-                    val email = if (summary.email.isNullOrBlank()) intermediateSummary.email else summary.email
-                    val userId = if (summary.userId.isNullOrBlank()) intermediateSummary.userId else summary.userId
-                    val servicesSet = HashSet<String>()
-                    servicesSet.addAll(intermediateSummary.serviceNames)
-                    servicesSet.addAll(summary.serviceNames)
-                    val traceSummary: MutableMap<String, Int> = HashMap()
-                    summary.traceEventSummary.forEach { t, u ->
-                        val iU = intermediateSummary.traceEventSummary[t] ?: -1
-                        if (t == "ANOMALY" && iU != -1) {
-                            traceSummary[t] = min(iU, u)
-                        } else {
-                            traceSummary[t] = max(iU, u)
-                        }
-                    }
-                    val services = servicesSet.toMutableList()
-                    val country = if (summary.country.isNullOrBlank()) intermediateSummary.country else summary.country
-                    val ip = if (summary.ip.isNullOrBlank()) intermediateSummary.ip else summary.ip
-                    val startTraceCount = summary.start_trace_count + intermediateSummary.start_trace_count
-                    val endTraceCount = summary.end_trace_count + intermediateSummary.end_trace_count
-                    var traceIncomplete = false
-                    if (startTraceCount == 0 || endTraceCount == 0 || startTraceCount != endTraceCount) {
-                        traceIncomplete = true
-                    }
-                    println("traceIncomplete $traceIncomplete $startTraceCount $endTraceCount")
-
-                    val traceName =
-                        if (intermediateSummary.traceName.isNullOrBlank() && !summary.traceName.isNullOrBlank())
-                            summary.traceName
-                        else intermediateSummary.traceName
-
-                    val deviceInfo =
-                        if (intermediateSummary.deviceInfo.size() > 0) intermediateSummary.deviceInfo else summary.deviceInfo
-                    val appInfo =
-                        if (intermediateSummary.appInfo.size() > 0) intermediateSummary.appInfo else summary.appInfo
-                    val finalSummary = TraceSummary(
-                        traceId, startTime, endTime, email, userId, services, traceSummary,
-                        country,
-                        ip,
-                        traceIncomplete = traceIncomplete,
-                        start_trace_count = startTraceCount,
-                        end_trace_count = endTraceCount,
-                        traceName = traceName,
-                        deviceInfo = deviceInfo,
-                        appInfo = appInfo
-                    )
-                    gson.toJson(finalSummary, traceSummaryType).toByteArray()
+            }, { key: String, value: ByteArray?, aggregate: ByteArray? ->
+                if (value != null && !value.isEmpty()) {
+                    aggregate
                 }
+                if (aggregate != null && !aggregate.isEmpty()) {
+                    value
+                }
+                val summary = gson.fromJson<TraceSummary>(String(value!!), traceSummaryType)
+                val intermediateSummary = gson.fromJson<TraceSummary>(String(aggregate!!), traceSummaryType)
+                val traceId =
+                    if (intermediateSummary.traceId.isNullOrBlank()) summary.traceId else intermediateSummary.traceId
+                println("received summary startcount ${summary.start_trace_count} endcount ${summary.end_trace_count}")
+                println("received intermediate startcount ${intermediateSummary.start_trace_count} endcount ${intermediateSummary.end_trace_count}")
+                println("aggregate summary: ${summary.traceName} intermediate: ${intermediateSummary.traceName}")
+                val startTime =
+                    if (intermediateSummary.startTime == 0L) summary.startTime else if (summary.startTime != 0L && summary.startTime < intermediateSummary.startTime) {
+                        summary.startTime
+                    } else {
+                        intermediateSummary.startTime
+                    }
+
+                val endTime =
+                    if (intermediateSummary.endTime == 0L) summary.endTime else if (summary.endTime != 0L && summary.endTime > intermediateSummary.endTime) {
+                        summary.endTime
+                    } else {
+                        intermediateSummary.endTime
+                    }
+                val email = if (summary.email.isNullOrBlank()) intermediateSummary.email else summary.email
+                val userId = if (summary.userId.isNullOrBlank()) intermediateSummary.userId else summary.userId
+                val servicesSet = HashSet<String>()
+                servicesSet.addAll(intermediateSummary.serviceNames)
+                servicesSet.addAll(summary.serviceNames)
+                val traceSummary: MutableMap<String, Int> = HashMap()
+                summary.traceEventSummary.forEach { t, u ->
+                    val iU = intermediateSummary.traceEventSummary[t] ?: -1
+                    if (t == "ANOMALY" && iU != -1) {
+                        traceSummary[t] = min(iU, u)
+                    } else {
+                        traceSummary[t] = max(iU, u)
+                    }
+                }
+                val services = servicesSet.toMutableList()
+                val country = if (summary.country.isNullOrBlank()) intermediateSummary.country else summary.country
+                val ip = if (summary.ip.isNullOrBlank()) intermediateSummary.ip else summary.ip
+                val startTraceCount = summary.start_trace_count + intermediateSummary.start_trace_count
+                val endTraceCount = summary.end_trace_count + intermediateSummary.end_trace_count
+                var traceIncomplete = false
+                if (startTraceCount == 0 || endTraceCount == 0 || startTraceCount != endTraceCount) {
+                    traceIncomplete = true
+                }
+                println("traceIncomplete $traceIncomplete $startTraceCount $endTraceCount")
+
+                val traceName =
+                    if (intermediateSummary.traceName.isNullOrBlank() && !summary.traceName.isNullOrBlank())
+                        summary.traceName
+                    else intermediateSummary.traceName
+
+                val deviceInfo =
+                    if (intermediateSummary.deviceInfo.size() > 0) intermediateSummary.deviceInfo else summary.deviceInfo
+                val appInfo =
+                    if (intermediateSummary.appInfo.size() > 0) intermediateSummary.appInfo else summary.appInfo
+                val finalSummary = TraceSummary(
+                    traceId, startTime, endTime, email, userId, services, traceSummary,
+                    country,
+                    ip,
+                    traceIncomplete = traceIncomplete,
+                    start_trace_count = startTraceCount,
+                    end_trace_count = endTraceCount,
+                    traceName = traceName,
+                    deviceInfo = deviceInfo,
+                    appInfo = appInfo
                 )
+                gson.toJson(finalSummary, traceSummaryType).toByteArray()
+            }, Materialized.`as`<String,ByteArray>(Stores.persistentKeyValueStore("trace-summary-store")))
             .toStream()
-            .selectKey { key, _ -> key.key() }
 
         summaryStream.foreach { _, value -> println(String(value)) }
         summaryStream
