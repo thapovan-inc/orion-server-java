@@ -206,10 +206,10 @@ object TraceSummaryBuilder {
                     println("traceSummaryTable ${summary.traceName}")
                     KeyValue.pair(key, gson.toJson(summary, traceSummaryType).toByteArray())
                 } catch (e: Throwable) {
-                    null
+                    KeyValue.pair(key, gson.toJson(null, traceSummaryType).toByteArray())
                 }
             }
-            .filter { _, value -> value != null }
+            .filter { _, value -> value != null && value.isNotEmpty() && String(value) != "null" }
             .groupByKey()
             .aggregate({
                 gson.toJson(TraceSummary(""), traceSummaryType).toByteArray()
