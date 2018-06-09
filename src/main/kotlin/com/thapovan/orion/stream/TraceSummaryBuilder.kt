@@ -207,6 +207,7 @@ object TraceSummaryBuilder {
                         }
                     }
                     println("traceSummaryTable ${summary.traceName}")
+                    println("Trace id: ${summary.traceId} ${gson.toJson(summary, traceSummaryType)}")
                     KeyValue.pair(key, gson.toJson(summary, traceSummaryType).toByteArray())
                 } catch (e: Throwable) {
                     KeyValue.pair(key, gson.toJson(null, traceSummaryType).toByteArray())
@@ -248,15 +249,15 @@ object TraceSummaryBuilder {
                 val servicesSet = HashSet<String>()
                 servicesSet.addAll(intermediateSummary.serviceNames)
                 servicesSet.addAll(summary.serviceNames)
-                val traceSummary: MutableMap<String, Int> = HashMap()
-                summary.traceEventSummary.forEach { t, u ->
-                    val iU = intermediateSummary.traceEventSummary[t] ?: -1
-                    if (t == "ANOMALY" && iU != -1) {
-                        traceSummary[t] = min(iU, u)
-                    } else {
-                        traceSummary[t] = max(iU, u)
-                    }
-                }
+                val traceSummary: MutableMap<String, Int> = summary.traceEventSummary
+//                summary.traceEventSummary.forEach { t, u ->
+//                    val iU = intermediateSummary.traceEventSummary[t] ?: -1
+//                    if (t == "ANOMALY" && iU != -1) {
+//                        traceSummary[t] = min(iU, u)
+//                    } else {
+//                        traceSummary[t] = max(iU, u)
+//                    }
+//                }
                 val services = servicesSet.toMutableList()
                 val country = if (summary.country.isNullOrBlank()) intermediateSummary.country else summary.country
                 val ip = if (summary.ip.isNullOrBlank()) intermediateSummary.ip else summary.ip
